@@ -22,4 +22,4 @@ async def download_api_funding_rates(trade_type: TradeType, symbol: str, http_pr
         output_file = funding_dir / f'{symbol}.pqt'
         df_funding.write_parquet(output_file)
 
-    logger.ok(f'{trade_type.value} {symbol} API Funding Rates download successfully, {output_file}')
+    logger.info(f'{trade_type.value} {symbol} API Funding Rates download successfully, {output_file}')

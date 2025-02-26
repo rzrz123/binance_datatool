@@ -57,7 +57,7 @@ async def api_download_kline(
                 output_file = kline_dir / filename
                 df.write_parquet(output_file)
 
-    logger.ok(f"{trade_type.value} {time_interval} API klines download successfully")
+    logger.info(f"{trade_type.value} {time_interval} API klines download successfully")
 
 
 def _get_missing_kline_dates_for_symbol(
@@ -136,4 +136,4 @@ async def api_download_aws_missing_kline_for_type(
     symbols = local_list_kline_symbols(trade_type, time_interval)
     await api_download_missing_kline_for_symbols(trade_type, symbols, time_interval, overwrite, http_proxy)
     
-    logger.ok("All missings downloaded")
+    logger.info("All missings downloaded")

@@ -15,7 +15,7 @@ from util.network import async_retry_getter
 
 
 def run_aws_download(download_infos: list[tuple[str, Path]], http_proxy):
-    with tempfile.NamedTemporaryFile(mode='w', delete_on_close=False, prefix='bhds_') as aria_file:
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, prefix='bhds_') as aria_file:
         for aws_url, local_file in download_infos:
             aria_file.write(f'{aws_url}\n  dir={local_file.parent}\n')
         aria_file.close()
@@ -125,7 +125,7 @@ class AwsClient(ABC):
                 returncode = run_aws_download(infos, self.http_proxy)
 
                 if returncode == 0:
-                    logger.ok(f'Batch{batch_idx}, Aria2 download successfully')
+                    logger.info(f'Batch{batch_idx}, Aria2 download successfully')
                 else:
                     logger.error(f'Batch{batch_idx}, Aria2 exited with code {returncode}')
 

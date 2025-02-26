@@ -159,4 +159,4 @@ def parse_type_all_klines(trade_type: TradeType, time_interval: str, force_updat
     parse_klines(trade_type, time_interval, symbols, force_update)
     time_elapsed = (time.perf_counter() - t_start) / 60
 
-    logger.ok(f'Finished Parsing {trade_type.value} {time_interval} Klines, Time={time_elapsed:.2f}mins')
+    logger.info(f'Finished Parsing {trade_type.value} {time_interval} Klines, Time={time_elapsed:.2f}mins')

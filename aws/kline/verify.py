@@ -20,7 +20,7 @@ def verify_klines(trade_type: TradeType, time_interval: str, symbols: List[str])
             get_unverified_aws_data_files(local_kline_dir / symbol / time_interval) for symbol in symbols))
 
     if not unverified_files:
-        logger.ok('All files verified')
+        logger.info('All files verified')
         return
 
     logger.debug(f'num_unverified={len(unverified_files)}, n_jobs={config.N_JOBS}')
@@ -32,7 +32,7 @@ def verify_klines(trade_type: TradeType, time_interval: str, symbols: List[str])
     msg = f'{num_success} successfully verified'
     if num_fail > 0:
         msg += f', deleted {num_fail} corrupted files'
-    logger.ok(msg)
+    logger.info(msg)
 
 
 def verify_type_all_klines(trade_type: TradeType, time_interval: str):

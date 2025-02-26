@@ -312,4 +312,4 @@ def merge_and_split_gaps_type_all(
                 task.result()
                 pbar.update(1)
     time_elapsed = (time.perf_counter() - start_time) / 60
-    logger.ok(f"Finished in {time_elapsed:.2f}mins")
+    logger.info(f"Finished in {time_elapsed:.2f}mins")
