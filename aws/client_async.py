@@ -119,13 +119,15 @@ class AwsClient(ABC):
 
             batched_infos: list[tuple[str, Path]] = sorted(split_into_batches(missing_infos, 4096))
             for batch_idx, infos in enumerate(batched_infos, 1):
-                logger.info(f'Download Batch{batch_idx}, '
-                            f'num_files={len(infos)}, '
-                            f'{infos[0][1].name} -- {infos[-1][1].name}')
+                logger.info(
+                    f'Download Batch{batch_idx}, '
+                    f'num_files={len(infos)}, '
+                    f'{infos[0][1].name} - {infos[-1][1].name}'
+                )
                 returncode = run_aws_download(infos, self.http_proxy)
 
                 if returncode == 0:
-                    logger.info(f'Batch{batch_idx}, Aria2 download successfully')
+                    logger.debug(f'Batch{batch_idx}, Aria2 download successfully')
                 else:
                     logger.error(f'Batch{batch_idx}, Aria2 exited with code {returncode}')
 

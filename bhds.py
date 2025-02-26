@@ -18,11 +18,21 @@ app.add_typer(
     name="aws_kline",
     help="Commands for maintaining Binance AWS K-line data.",
 )
-app.add_typer(api_data, name="api_data", help="Commands for maintaining Binance API data.")
 app.add_typer(
-    aws_liquidation, name="aws_liquidation", help="Commands for maintaining Binance AWS liquidation snapshot data."
+    aws_liquidation,
+    name="aws_liquidation",
+    help="Commands for maintaining Binance AWS liquidation snapshot data.",
 )
-app.add_typer(generate, name="generate", help="Commands to generate the resulting data.")
+app.add_typer(
+    api_data,
+    name="api_data",
+    help="Commands for maintaining Binance API data.",
+)
+app.add_typer(
+    generate,
+    name="generate",
+    help="Commands to generate the resulting data.",
+)
 
 
 if __name__ == "__main__":
