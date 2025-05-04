@@ -8,6 +8,7 @@ from typing_extensions import Annotated
 from config import ContractType, TradeType
 
 from .download import download_cm_futures_funding_rates, download_funding_rates, download_um_futures_funding_rates
+from .parse import parse_funding_rates, parse_type_all_funding_rates
 from .verify import verify_funding_rates, verify_type_all_funding_rates
 
 app = typer.Typer()
@@ -78,3 +79,24 @@ def verify_type_all(
     Verify Binance funding rates for all symbols with the given trade type
     """
     verify_type_all_funding_rates(trade_type)
+
+
+@app.command()
+def parse(
+    trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
+    symbols: Annotated[list[str], typer.Argument(help="A list of trading symbols, e.g., 'BTCUSDT ETHUSDT'.")],
+):
+    """
+    Parse Binance funding rates for specific symbols
+    """
+    parse_funding_rates(trade_type, symbols)
+
+
+@app.command()
+def parse_type_all(
+    trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
+):
+    """
+    Parse Binance funding rates for all symbols with the given trade type
+    """
+    parse_type_all_funding_rates(trade_type)
