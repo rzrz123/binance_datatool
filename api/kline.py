@@ -30,7 +30,7 @@ async def api_download_kline(
     logger.info(f"Start Download {trade_type.value} {time_interval} {len(sym_dts)} Klines from Binance API")
     if http_proxy is not None:
         logger.debug(f"Use proxy, http_proxy={http_proxy}")
-    sym_dts = sorted([(sym, convert_date(dt)) for sym, dt in sym_dts])
+    sym_dts = sorted([(sym, convert_date(dt)) for sym, dt in sym_dts])  # type: ignore
 
     async with create_aiohttp_session(config.HTTP_TIMEOUT_SEC) as session:
         fetcher = BinanceFetcher(trade_type, session, http_proxy)
@@ -51,7 +51,7 @@ async def api_download_kline(
                 df, symbol, dt = await task
                 if df is None:
                     continue
-                filename = dt.strftime("%Y%m%d") + ".pqt"
+                filename = dt.strftime("%Y%m%d") + ".pqt" # type: ignore
                 kline_dir = config.BINANCE_DATA_DIR / "api_data" / trade_type.value / "klines" / symbol / time_interval
                 kline_dir.mkdir(parents=True, exist_ok=True)
                 output_file = kline_dir / filename

@@ -3,7 +3,7 @@ import shutil
 import time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -65,7 +65,7 @@ def read_kline_csv(csv_file):
     df = ldf.collect()
 
     ts_unit = "ms"
-    if df["candle_begin_time"].max() >= (10**15):
+    if df["candle_begin_time"].max() >= (10**15):  # type: ignore
         ts_unit = "us"
 
     # Cast column types
@@ -81,14 +81,14 @@ def get_kline_file_dt(f: Path) -> date:
     return date(year=int(tks[0]), month=int(tks[1]), day=int(tks[2]))
 
 
-def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: Path, thres: int) -> Path:
+def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: Path, thres: int) -> tuple[Path, int]:
     ts_mgr = TSManager(parsed_symbol_kline_dir)
 
     aws_kline_files = get_verified_aws_data_files(aws_symbol_kline_dir)
     aws_partition_files = defaultdict(set)
     for kline_file in aws_kline_files:
         dt = get_kline_file_dt(kline_file)
-        partition_name = get_partition(dt, DataFrequency.monthly)
+        partition_name = get_partition(dt, DataFrequency.monthly)  # type: ignore
         aws_partition_files[partition_name].add((kline_file, dt))
 
     df_cnt = ts_mgr.get_row_count_per_date(exclude_empty=False)
@@ -111,7 +111,7 @@ def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: 
 
 
 def parse_klines(trade_type: TradeType, time_interval: str, symbols: list[str], force_update: bool):
-    logger.info(f"Start parse csv klines")
+    logger.info("Start parse csv klines")
     logger.debug(
         f"trade_type={trade_type.value}, time_interval={time_interval}, num_symbols={len(symbols)}, "
         f"n_jobs={config.N_JOBS}, "
@@ -122,7 +122,6 @@ def parse_klines(trade_type: TradeType, time_interval: str, symbols: list[str], 
     parsed_kline_dir = config.BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "klines"
 
     thres = timedelta(days=1) // convert_interval_to_timedelta(time_interval)
-    thres = 1
 
     logger.debug(f"aws_local_kline_dir={aws_local_kline_dir}")
     logger.debug(f"parsed_kline_dir={parsed_kline_dir}")

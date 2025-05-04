@@ -8,7 +8,7 @@ import time
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-
+from loguru import logger
 from colorama import Fore, Style, init
 
 init(autoreset=True)
@@ -29,7 +29,7 @@ def ok(self, message, *args, **kwargs):
         self._log(OK_LEVEL, message, args, **kwargs)
 
 
-logging.Logger.ok = ok
+logging.Logger.ok = ok  # type: ignore
 
 
 # ====================================================================================================
@@ -146,19 +146,18 @@ def divider(name='', sep='=', _logger=None, with_timestamp=True) -> None:
         logger.debug(line)
     time.sleep(0.02)
 
+logger.remove()
+logger_format = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    "<level>{level}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line: <4}</cyan> | "
+    "<level>{message}</level>"
+)
+logger.add(sys.stderr, format=logger_format, level="DEBUG")
+
 like_simons_log = False
 if like_simons_log:
     logger = get_logger()
-else:
-    from loguru import logger
-    logger.remove()
-    logger_format = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-        "<level>{level}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line: <4}</cyan> | "
-        "<level>{message}</level>"
-    )
-    logger.add(sys.stderr, format=logger_format, level="INFO")
 
 # Run directly to see usage examples
 if __name__ == '__main__':
@@ -166,7 +165,7 @@ if __name__ == '__main__':
     logger.debug("Debug information without markers or colors, equivalent to print")
     logger.info("Informational message in blue, useful for recording intermediate results")
     # noinspection PyUnresolvedReferences
-    logger.ok("Completion message in green, typically indicating success")
+    logger.ok("Completion message in green, typically indicating success")  # type: ignore
     logger.warning("Warning message in yellow, typically used for alerts")
     logger.error("Error message in red, usually error-related hints")
     logger.critical("Critical message in dark red, typically very important information")

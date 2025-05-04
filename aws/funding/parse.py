@@ -1,8 +1,5 @@
-import logging
 import multiprocessing as mp
-import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from pathlib import Path
 import time
 from zipfile import ZipFile
 
@@ -87,7 +84,7 @@ def parse_funding_rates(trade_type: TradeType, symbols: list[str]):
         trade_type (TradeType): Type of trade (e.g., SPOT, FUTURES)
         symbols (list[str]): List of symbols to process
     """
-    logger.info(f"Start parsing funding rates")
+    logger.info("Start parsing funding rates")
 
     aws_local_funding_dir = AwsFundingRateClient.LOCAL_DIR / AwsFundingRateClient.get_base_dir(
         trade_type, DataFrequency.monthly
@@ -126,4 +123,4 @@ def parse_type_all_funding_rates(trade_type: TradeType):
     parse_funding_rates(trade_type, symbols)
     
     time_elapsed = (time.perf_counter() - t_start) / 60
-    logger.ok(f"Finished Parsing {trade_type.value} Funding Rates, Time={time_elapsed:.2f}mins")
+    logger.info(f"Finished Parsing {trade_type.value} Funding Rates, Time={time_elapsed:.2f}mins")

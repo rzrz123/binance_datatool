@@ -15,9 +15,7 @@ from util.log_kit import divider, logger
 from util.time import convert_interval_to_timedelta
 
 
-def polars_calc_resample(
-    df: pl.DataFrame, time_interval: str, resample_interval: str, offset: str | timedelta
-) -> pl.DataFrame:
+def polars_calc_resample(df: pl.DataFrame, time_interval: str, resample_interval: str, offset: str | timedelta) -> pl.DataFrame:
     """
     Resample a Polars kline DataFrame to a higher time frame with an offset.
     For example, resample 5-minute klines to hourly klines with a 5-minute offset.
@@ -161,4 +159,4 @@ def resample_kline_type(trade_type: TradeType, resample_interval: str, base_offs
                 pbar.update(1)
 
     time_elapsed = (time.perf_counter() - start_time) / 60
-    logger.ok(f"Finished in {time_elapsed:.2f}mins")
+    logger.info(f"Finished in {time_elapsed:.2f}mins")
