@@ -166,12 +166,14 @@ class AwsLiquidationClient(AwsClient):
 
 class AwsKlineClient(AwsClient):
 
-    def __init__(self,
-                 session,
-                 trade_type: TradeType,
-                 time_interval: str,
-                 data_freq: DataFrequency = DataFrequency.daily,
-                 http_proxy: str = None):
+    def __init__(
+            self,
+            session,
+            trade_type: TradeType,
+            time_interval: str,
+            data_freq: DataFrequency = DataFrequency.daily,
+            http_proxy: str = None
+        ):
         self.trade_type = trade_type
         self.time_interval = time_interval
 

@@ -5,8 +5,7 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from aws.kline.download import (download_cm_futures_klines, download_klines, download_spot_klines,
-                                download_um_futures_klines)
+from aws.kline.download import download_cm_futures_klines, download_klines, download_spot_klines,download_um_futures_klines
 from aws.kline.verify import verify_klines, verify_type_all_klines
 from aws.kline.parse import parse_klines, parse_type_all_klines
 from config import ContractType, TradeType
