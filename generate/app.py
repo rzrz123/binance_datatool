@@ -5,7 +5,7 @@ from config import TradeType
 from util.log_kit import divider
 
 from .kline import gen_kline, gen_kline_type
-from .resample import resample_kline, resample_kline_type
+from .resample import resample_kline, resample_kline_all
 
 app = typer.Typer()
 
@@ -97,4 +97,4 @@ def resample_type(
     """
     Resample kline data for all symbols of given trade type and resample interval.
     """
-    resample_kline_type(trade_type=trade_type, resample_interval=resample_interval, base_offset=base_offset)
+    resample_kline_all(trade_type=trade_type, resample_interval=resample_interval, base_offset=base_offset)

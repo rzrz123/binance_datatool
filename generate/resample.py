@@ -92,7 +92,7 @@ def resample_kline(trade_type: TradeType, symbol: str, resample_interval: str, b
     time_interval = "1m"
     results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value
 
-    kline_file = results_dir / "klines" / time_interval / f"{symbol}.pqt"
+    kline_file = results_dir / time_interval / f"{symbol}.pqt"
     if not kline_file.exists():
         return
 
@@ -115,10 +115,11 @@ def resample_kline(trade_type: TradeType, symbol: str, resample_interval: str, b
 
     # Generate resampled data for each offset
     for i in range(num_offsets):
+        # TODO 支持offset
         offset_str = f"{i * int(base_offset[:-1])}{base_offset[-1]}"
 
         # Create output directory for this offset
-        resampled_offset_dir = results_dir / "resampled_klines" / resample_interval / offset_str
+        resampled_offset_dir = results_dir / resample_interval / offset_str
         resampled_offset_dir.mkdir(parents=True, exist_ok=True)
 
         # Read and resample data
@@ -128,14 +129,14 @@ def resample_kline(trade_type: TradeType, symbol: str, resample_interval: str, b
     return symbol
 
 
-def resample_kline_type(trade_type: TradeType, resample_interval: str, base_offset: str):
+def resample_kline_all(trade_type: TradeType, resample_interval: str, base_offset: str):
     """
     Resample kline data for all symbols of a given trade type.
     """
     logger.info(f"Resample kline {trade_type.value} {resample_interval} {base_offset}")
     symbols = list_results_kline_symbols(trade_type, "1m")
 
-    resampled_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / "resampled_klines" / resample_interval
+    resampled_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / resample_interval
     logger.debug(f"Resampled kline directory: {resampled_dir}")
     if resampled_dir.exists():
         logger.debug("Resampled kline directory exists, removing it")

@@ -71,7 +71,7 @@ def gen_kline(
     if not splited_dfs:
         return
 
-    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / "klines" / time_interval
+    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
 
     # Make sure results directory exists
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -94,7 +94,7 @@ def gen_kline_type(
 ):
     logger.info(f"BHDS Merge klines for {trade_type.value} {time_interval}")
 
-    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / "klines" / time_interval
+    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
     logger.debug(f"results_dir={results_dir}")
     if results_dir.exists():
         logger.debug("results_dir exists, removing it")

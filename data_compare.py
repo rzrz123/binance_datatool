@@ -29,7 +29,7 @@ class BHDSLoader(DataLoader):
     """BHDS数据加载器"""
 
     def get_data_dir(self, trade_type: TradeType) -> Path:
-        return BINANCE_DATA_DIR / "results_data" / trade_type.value / "resampled_klines" / "1h" / "0m"
+        return BINANCE_DATA_DIR / "results_data" / trade_type.value / "1h" / "0m"
 
     def load_data(self, symbol: str, trade_type: TradeType) -> pd.DataFrame:
         data_dir = self.get_data_dir(trade_type)

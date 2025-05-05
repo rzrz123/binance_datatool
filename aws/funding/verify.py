@@ -20,7 +20,7 @@ def verify_funding_rates(trade_type: TradeType, symbols: List[str]):
     )
 
     if not unverified_files:
-        logger.info("All files verified")
+        logger.debug("All files verified")
         return
 
     logger.debug(f"num_unverified={len(unverified_files)}, n_jobs={config.N_JOBS}")
