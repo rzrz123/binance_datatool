@@ -7,8 +7,8 @@ from typing_extensions import Annotated
 
 from config import TradeType
 
-from .funding import api_download_funding_rates, api_download_funding_rates_type_all
-from .kline import api_download_aws_missing_kline_for_type, api_download_kline, api_download_missing_kline_for_symbols
+from .funding import download_funding_rates, download_funding_rates_all
+from .kline import download_missing_kline_type, api_download_kline, download_missing_kline_symbols
 
 app = typer.Typer()
 
@@ -52,7 +52,7 @@ def download_aws_missing_kline_type(
     """
     Download Binance kline data from the Kline API for the provided trade_type that have missing dates in AWS
     """
-    asyncio.run(api_download_aws_missing_kline_for_type(trade_type, time_interval, overwrite, http_proxy))
+    asyncio.run(download_missing_kline_type(trade_type, time_interval, overwrite, http_proxy))
 
 
 @app.command()
@@ -73,7 +73,7 @@ def download_aws_missing_kline(
     Download Binance kline data from the Kline API for given symbols that have missing dates in AWS
     """
 
-    asyncio.run(api_download_missing_kline_for_symbols(trade_type, symbols, time_interval, overwrite, http_proxy))
+    asyncio.run(download_missing_kline_symbols(trade_type, symbols, time_interval, overwrite, http_proxy))
 
 
 @app.command()
@@ -85,7 +85,7 @@ def download_recent_funding(
     """
     Download Binance funding rate for specific symbol from Binance API
     """
-    asyncio.run(api_download_funding_rates(trade_type, symbols, http_proxy))
+    asyncio.run(download_funding_rates(trade_type, symbols, http_proxy))
 
 
 
@@ -97,5 +97,5 @@ def download_recent_funding_type(
     """
     Download Binance funding rate for all symbols of a specific trade type from Binance API
     """
-    asyncio.run(api_download_funding_rates_type_all(trade_type, http_proxy))
+    asyncio.run(download_funding_rates_all(trade_type, http_proxy))
 

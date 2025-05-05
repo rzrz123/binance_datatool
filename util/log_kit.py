@@ -148,12 +148,12 @@ def divider(name='', sep='=', _logger=None, with_timestamp=True) -> None:
 
 logger.remove()
 logger_format = (
-    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-    "<level>{level}</level> | "
-    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line: <4}</cyan> | "
+    "<green>{time:HH:mm:ss}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{name: <20}</cyan>:<cyan>{function: <30}</cyan>:<cyan>{line: <4}</cyan> | "
     "<level>{message}</level>"
 )
-logger.add(sys.stderr, format=logger_format, level="DEBUG")
+logger.add(sys.stderr, format=logger_format, level="INFO")
 
 like_simons_log = False
 if like_simons_log:

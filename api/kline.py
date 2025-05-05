@@ -1,8 +1,9 @@
 import asyncio
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Optional
 
 import polars as pl
+from tqdm import tqdm
 
 import config
 from api.binance import BinanceFetcher
@@ -37,7 +38,7 @@ async def api_download_kline(
         while sym_dts:
             server_ts, weight = await fetcher.get_time_and_weight()
             batch, sym_dts = sym_dts[:BATCH_SIZE], sym_dts[BATCH_SIZE:]
-            logger.debug(f"server_time={server_ts}, weight_used={weight}, start={batch[0]}, end={batch[-1]}")
+            logger.info(f"server_time={server_ts}, weight_used={weight}, start={batch[0]}, end={batch[-1]}")
 
             max_minute_weight, _ = fetcher.get_api_limits()
             if weight > max_minute_weight - 480:
@@ -57,7 +58,7 @@ async def api_download_kline(
                 output_file = kline_dir / filename
                 df.write_parquet(output_file)
 
-    logger.info(f"{trade_type.value} {time_interval} API klines download successfully")
+    logger.debug(f"{trade_type.value} {time_interval} API klines download successfully")
 
 
 def _get_missing_kline_dates_for_symbol(
@@ -98,7 +99,7 @@ def _get_missing_kline_dates_for_symbol(
     return sorted(dts)
 
 
-async def api_download_missing_kline_for_symbols(
+async def download_missing_kline_symbols(
     trade_type: TradeType,
     symbols: list[str],
     time_interval: str,
@@ -116,24 +117,26 @@ async def api_download_missing_kline_for_symbols(
         
     """
     sym_dts = []
-    
-    for symbol in symbols:
-        missing_dates = _get_missing_kline_dates_for_symbol(trade_type, symbol, time_interval, overwrite)
-        sym_dts.extend((symbol, dt) for dt in missing_dates)
-    
+    now = datetime.now()
+    with tqdm(total=len(symbols), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Missing Klines |", colour="green") as pbar:
+        for symbol in symbols:
+            missing_dates = _get_missing_kline_dates_for_symbol(trade_type, symbol, time_interval, overwrite)
+            sym_dts.extend((symbol, dt) for dt in missing_dates)
+            pbar.update(1) 
+
     if sym_dts:
         await api_download_kline(trade_type, time_interval, sym_dts, http_proxy)
 
 
-async def api_download_aws_missing_kline_for_type(
+async def download_missing_kline_type(
     trade_type: TradeType,
     time_interval: str,
     overwrite: bool,
     http_proxy: Optional[str],
 ):
-    divider(f"BHDS Download missing {trade_type.value} {time_interval} klines from API")
+    logger.info(f"BHDS Download missing {trade_type.value} {time_interval} klines from API")
 
     symbols = local_list_kline_symbols(trade_type, time_interval)
-    await api_download_missing_kline_for_symbols(trade_type, symbols, time_interval, overwrite, http_proxy)
+    await download_missing_kline_symbols(trade_type, symbols, time_interval, overwrite, http_proxy)
     
-    logger.info("All missings downloaded")
+    logger.debug("All missings downloaded")

@@ -1,9 +1,9 @@
 from functools import partial
 import shutil
 import time
-from typing import Optional
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing as mp
+from datetime import datetime
 
 import polars as pl
 from tqdm import tqdm
@@ -14,7 +14,7 @@ import config
 from generate.merge import merge_klines, merge_funding_rates
 from generate.kline_gaps import fill_kline_gaps, scan_gaps, split_by_gaps
 from util.concurrent import mp_env_init
-from util.log_kit import divider, logger
+from util.log_kit import logger
 
 
 def gen_kline(
@@ -92,19 +92,19 @@ def gen_kline_type(
     with_vwap: bool,
     with_funding_rates: bool,
 ):
-    divider(f"BHDS Merge klines for {trade_type.value} {time_interval}")
+    logger.info(f"BHDS Merge klines for {trade_type.value} {time_interval}")
 
     results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / "klines" / time_interval
-    logger.info(f"results_dir={results_dir}")
+    logger.debug(f"results_dir={results_dir}")
     if results_dir.exists():
-        logger.warning(f"results_dir exists, removing it")
+        logger.debug("results_dir exists, removing it")
         shutil.rmtree(results_dir)
 
     msg = f"split_gaps={split_gaps}"
     if split_gaps:
         msg += f" (min_days={min_days}, min_price_chg={min_price_chg})"
     msg += f"; with_vwap={with_vwap}; with_funding_rates={with_funding_rates}"
-    logger.info(msg)
+    logger.debug(msg)
 
     symbols = local_list_kline_symbols(trade_type, time_interval)
 
@@ -112,7 +112,7 @@ def gen_kline_type(
         logger.warning(f"No symbols found for {trade_type.value} {time_interval}")
         return
 
-    logger.info(f"num_symbols={len(symbols)} ({symbols[0]} -- {symbols[-1]})")
+    logger.debug(f"num_symbols={len(symbols)} ({symbols[0]} -- {symbols[-1]})")
 
     start_time = time.perf_counter()
 
@@ -131,10 +131,11 @@ def gen_kline_type(
         max_workers=config.N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init
     ) as exe:
         tasks = [exe.submit(run_func, symbol=symbol) for symbol in symbols]
-        with tqdm(total=len(tasks), desc="Merge klines", unit="task") as pbar:
+        now = datetime.now()
+        with tqdm(total=len(tasks), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Merge |", colour="green") as pbar:
             for task in as_completed(tasks):
                 symbol = task.result()
                 pbar.set_postfix_str(symbol)
                 pbar.update(1)
     time_elapsed = (time.perf_counter() - start_time) / 60
-    logger.info(f"Finished in {time_elapsed:.2f}mins")
+    logger.debug(f"Finished in {time_elapsed:.2f}mins")

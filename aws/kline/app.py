@@ -5,9 +5,9 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from aws.kline.download import download_cm_futures_klines, download_klines, download_spot_klines,download_um_futures_klines
-from aws.kline.verify import verify_klines, verify_type_all_klines
-from aws.kline.parse import parse_klines, parse_type_all_klines
+from aws.kline.download import download_cm_klines, download_klines, download_spot_klines,download_um_klines
+from aws.kline.verify import verify_klines, verify_all_klines
+from aws.kline.parse import parse_klines, parse_all_klines
 from config import ContractType, TradeType
 
 app = typer.Typer()
@@ -75,7 +75,7 @@ def download_um_futures(
     Download Binance USDⓈ-M Futures klines
     '''
     for time_interval in time_intervals:
-        asyncio.run(download_um_futures_klines(time_interval, quote, contract_type, http_proxy))
+        asyncio.run(download_um_klines(time_interval, quote, contract_type, http_proxy))
 
 
 @app.command()
@@ -94,7 +94,7 @@ def download_cm_futures(
     Download Binance COIN-M Futures klines
     '''
     for time_interval in time_intervals:
-        asyncio.run(download_cm_futures_klines(time_interval, contract_type, http_proxy))
+        asyncio.run(download_cm_klines(time_interval, contract_type, http_proxy))
 
 
 @app.command()
@@ -127,7 +127,7 @@ def verify_type_all(
     Verify Binance Klines for all symbols with the given trade type and time intervals
     '''
     for time_interval in time_intervals:
-        verify_type_all_klines(trade_type, time_interval)
+        verify_all_klines(trade_type, time_interval)
 
 
 @app.command()
@@ -162,4 +162,4 @@ def parse_type_all(
     Parse Binance Klines for all symbols with the given trade type and time intervals
     '''
     for time_interval in time_intervals:
-        parse_type_all_klines(trade_type, time_interval, force_update)
+        parse_all_klines(trade_type, time_interval, force_update)

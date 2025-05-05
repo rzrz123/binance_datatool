@@ -9,7 +9,7 @@ from aws.client_async import AwsFundingRateClient
 from aws.funding.util import local_list_funding_symbols
 from config import BINANCE_DATA_DIR, N_JOBS, DataFrequency, TradeType
 from util.concurrent import mp_env_init
-from util.log_kit import divider, logger
+from util.log_kit import logger
 
 
 def read_funding_csv(funding_file) -> pl.DataFrame:
@@ -84,7 +84,7 @@ def parse_funding_rates(trade_type: TradeType, symbols: list[str]):
         trade_type (TradeType): Type of trade (e.g., SPOT, FUTURES)
         symbols (list[str]): List of symbols to process
     """
-    logger.info("Start parsing funding rates")
+    logger.debug("Start parsing funding rates")
 
     aws_local_funding_dir = AwsFundingRateClient.LOCAL_DIR / AwsFundingRateClient.get_base_dir(
         trade_type, DataFrequency.monthly
@@ -114,8 +114,8 @@ def parse_funding_rates(trade_type: TradeType, symbols: list[str]):
             future.result()
 
 
-def parse_type_all_funding_rates(trade_type: TradeType):
-    divider(f"BHDS Parse {trade_type.value} Funding Rates")
+def parse_funding_rates_all(trade_type: TradeType):
+    logger.info(f"BHDS Parse {trade_type.value} Funding Rates")
     symbols = local_list_funding_symbols(trade_type)
 
     t_start = time.perf_counter()
@@ -123,4 +123,4 @@ def parse_type_all_funding_rates(trade_type: TradeType):
     parse_funding_rates(trade_type, symbols)
     
     time_elapsed = (time.perf_counter() - t_start) / 60
-    logger.info(f"Finished Parsing {trade_type.value} Funding Rates, Time={time_elapsed:.2f}mins")
+    logger.debug(f"Finished Parsing {trade_type.value} Funding Rates, Time={time_elapsed:.2f}mins")

@@ -2,7 +2,7 @@ import multiprocessing as mp
 import shutil
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import timedelta
+from datetime import timedelta, datetime
 from functools import partial
 
 import polars as pl
@@ -132,13 +132,13 @@ def resample_kline_type(trade_type: TradeType, resample_interval: str, base_offs
     """
     Resample kline data for all symbols of a given trade type.
     """
-    divider(f"Resample kline {trade_type.value} {resample_interval} {base_offset}")
+    logger.info(f"Resample kline {trade_type.value} {resample_interval} {base_offset}")
     symbols = list_results_kline_symbols(trade_type, "1m")
 
     resampled_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / "resampled_klines" / resample_interval
-    logger.info(f"Resampled kline directory: {resampled_dir}")
+    logger.debug(f"Resampled kline directory: {resampled_dir}")
     if resampled_dir.exists():
-        logger.warning(f"Resampled kline directory exists, removing it")
+        logger.debug("Resampled kline directory exists, removing it")
         shutil.rmtree(resampled_dir)
 
     start_time = time.perf_counter()
@@ -152,11 +152,12 @@ def resample_kline_type(trade_type: TradeType, resample_interval: str, base_offs
 
     with ProcessPoolExecutor(max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init) as exe:
         tasks = [exe.submit(run_func, symbol=symbol) for symbol in symbols]
-        with tqdm(total=len(tasks), desc="Resample klines", unit="task") as pbar:
+        now = datetime.now()
+        with tqdm(total=len(tasks), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Resample |", colour="green") as pbar:
             for task in as_completed(tasks):
                 symbol = task.result()
                 pbar.set_postfix_str(symbol)
                 pbar.update(1)
 
     time_elapsed = (time.perf_counter() - start_time) / 60
-    logger.info(f"Finished in {time_elapsed:.2f}mins")
+    logger.debug(f"Finished in {time_elapsed:.2f}mins")

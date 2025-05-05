@@ -17,7 +17,7 @@ async def download_funding_for_symbol(funding_dir: Path, symbol: str, fetcher: B
     df_funding.write_parquet(output_file)
 
 
-async def api_download_funding_rates(trade_type: TradeType, symbols: list[str], http_proxy: Optional[str]):
+async def download_funding_rates(trade_type: TradeType, symbols: list[str], http_proxy: Optional[str]):
     logger.info(f"Start Download {trade_type.value} {symbols[0]} -- {symbols[-1]} Funding Rates from Binance API")
 
     funding_dir = BINANCE_DATA_DIR / "api_data" / trade_type.value / "funding_rate"
@@ -36,7 +36,7 @@ async def api_download_funding_rates(trade_type: TradeType, symbols: list[str], 
     logger.info(f"{trade_type.value} {symbols[0]} -- {symbols[-1]} API Funding Rates download successfully")
 
 
-async def api_download_funding_rates_type_all(trade_type: TradeType, http_proxy: Optional[str]):
+async def download_funding_rates_all(trade_type: TradeType, http_proxy: Optional[str]):
     divider(f"BHDS Recent {trade_type.value} Funding Rates API Download")
     symbols = local_list_funding_symbols(trade_type)
-    await api_download_funding_rates(trade_type, symbols, http_proxy)
+    await download_funding_rates(trade_type, symbols, http_proxy)

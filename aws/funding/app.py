@@ -7,9 +7,9 @@ from typing_extensions import Annotated
 
 from config import ContractType, TradeType
 
-from .download import download_cm_futures_funding_rates, download_funding_rates, download_um_futures_funding_rates
-from .parse import parse_funding_rates, parse_type_all_funding_rates
-from .verify import verify_funding_rates, verify_type_all_funding_rates
+from .download import download_cm_funding_rates, download_funding_rates, download_um_funding_rates
+from .parse import parse_funding_rates, parse_funding_rates_all
+from .verify import verify_funding_rates, verify_funding_rates_all
 
 app = typer.Typer()
 
@@ -43,7 +43,7 @@ def download_um_futures(
     """
     Download Binance USDⓈ-M Futures funding rates
     """
-    asyncio.run(download_um_futures_funding_rates(quote, contract_type, http_proxy))
+    asyncio.run(download_um_funding_rates(quote, contract_type, http_proxy))
 
 
 @app.command()
@@ -57,7 +57,7 @@ def download_cm_futures(
     """
     Download Binance Coin Futures funding rates
     """
-    asyncio.run(download_cm_futures_funding_rates(contract_type, http_proxy))
+    asyncio.run(download_cm_funding_rates(contract_type, http_proxy))
 
 
 @app.command()
@@ -78,7 +78,7 @@ def verify_type_all(
     """
     Verify Binance funding rates for all symbols with the given trade type
     """
-    verify_type_all_funding_rates(trade_type)
+    verify_funding_rates_all(trade_type)
 
 
 @app.command()
@@ -99,4 +99,4 @@ def parse_type_all(
     """
     Parse Binance funding rates for all symbols with the given trade type
     """
-    parse_type_all_funding_rates(trade_type)
+    parse_funding_rates_all(trade_type)

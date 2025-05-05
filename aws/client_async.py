@@ -10,7 +10,7 @@ from aiohttp import ClientSession
 from aws.kline.util import split_into_batches
 import config
 from config import DataFrequency, TradeType
-from util.log_kit import logger, divider
+from util.log_kit import logger
 from util.network import async_retry_getter
 
 
@@ -102,7 +102,7 @@ class AwsClient(ABC):
         return {symbol: list_result for symbol, list_result in zip(symbols, results)}
 
     def aws_download(self, aws_files: list[PurePosixPath], max_tries=3):
-        logger.info(f'Local file path: {self.LOCAL_DIR}')
+        logger.debug(f'Local file path: {self.LOCAL_DIR}')
         download_infos = []
         for aws_file in aws_files:
             local_file = self.LOCAL_DIR / aws_file
@@ -115,20 +115,18 @@ class AwsClient(ABC):
             if not missing_infos:
                 break
 
-            divider(f'try_id={try_id}, {len(missing_infos)} files to be downloaded', sep='-')
+            logger.debug(f'try_id={try_id}, {len(missing_infos)} files to be downloaded', sep='-')
 
             batched_infos: list[tuple[str, Path]] = sorted(split_into_batches(missing_infos, 4096))
             for batch_idx, infos in enumerate(batched_infos, 1):
-                logger.info(
+                logger.debug(
                     f'Download Batch{batch_idx}, '
                     f'num_files={len(infos)}, '
                     f'{infos[0][1].name} - {infos[-1][1].name}'
                 )
                 returncode = run_aws_download(infos, self.http_proxy)
 
-                if returncode == 0:
-                    logger.debug(f'Batch{batch_idx}, Aria2 download successfully')
-                else:
+                if returncode != 0:
                     logger.error(f'Batch{batch_idx}, Aria2 exited with code {returncode}')
 
 
