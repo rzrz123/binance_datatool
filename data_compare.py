@@ -8,7 +8,6 @@ import pickle
 from abc import ABC, abstractmethod
 
 from config import BINANCE_DATA_DIR, TradeType
-from config.config import _BASE_DIR
 
 
 class DataLoader(ABC):

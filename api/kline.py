@@ -28,7 +28,7 @@ async def api_download_kline(
 ):
     BATCH_SIZE = 40
 
-    logger.info(f"Start Download {trade_type.value} {time_interval} {len(sym_dts)} Klines from Binance API")
+    logger.debug(f"Start Download {trade_type.value} {time_interval} {len(sym_dts)} Klines from Binance API")
     if http_proxy is not None:
         logger.debug(f"Use proxy, http_proxy={http_proxy}")
     sym_dts = sorted([(sym, convert_date(dt)) for sym, dt in sym_dts])  # type: ignore
@@ -38,7 +38,7 @@ async def api_download_kline(
         while sym_dts:
             server_ts, weight = await fetcher.get_time_and_weight()
             batch, sym_dts = sym_dts[:BATCH_SIZE], sym_dts[BATCH_SIZE:]
-            logger.info(f"server_time={server_ts}, weight_used={weight}, start={batch[0]}, end={batch[-1]}")
+            logger.debug(f"server_time={server_ts}, weight_used={weight}, start={batch[0]}, end={batch[-1]}")
 
             max_minute_weight, _ = fetcher.get_api_limits()
             if weight > max_minute_weight - 480:

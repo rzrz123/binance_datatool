@@ -119,7 +119,7 @@ def resample_kline(trade_type: TradeType, symbol: str, resample_interval: str, b
         offset_str = f"{i * int(base_offset[:-1])}{base_offset[-1]}"
 
         # Create output directory for this offset
-        resampled_offset_dir = results_dir / resample_interval / offset_str
+        resampled_offset_dir = results_dir / resample_interval
         resampled_offset_dir.mkdir(parents=True, exist_ok=True)
 
         # Read and resample data

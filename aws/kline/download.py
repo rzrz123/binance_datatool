@@ -38,7 +38,7 @@ async def download_spot_klines(time_interval: str, quote: str, keep_stablecoins:
 
 
 async def download_um_klines(time_interval: str, quote: str, contract_type: ContractType,http_proxy: Optional[str]):
-    logger.info(f'BHDS Download USDⓈ-M Futures {time_interval} Klines, contract_type={contract_type}, quote={quote}')
+    logger.info(f'BHDS Download USDⓈ-M Futures {time_interval} Klines, quote={quote}')
     symbols = await aws_list_kline_symbols(TradeType.um_futures, time_interval, http_proxy)
     filtered_symbols = filter_um_futures_symbols(quote, contract_type, symbols)
     await download_klines(trade_type=TradeType.um_futures, time_interval=time_interval, symbols=filtered_symbols, http_proxy=http_proxy)
