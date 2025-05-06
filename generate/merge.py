@@ -68,27 +68,30 @@ def merge_funding_rates(trade_type: TradeType, symbol: str) -> Optional[pl.DataF
     # Get AWS parsed data file
     parsed_funding_file = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "funding" / f"{symbol}.pqt"
 
-    # Check if AWS parsed data exists
-    if not parsed_funding_file.exists():
-        return None
-
     # Read AWS parsed data
-    aws_df = pl.read_parquet(parsed_funding_file, columns=["candle_begin_time", "funding_rate"])
-    if aws_df.is_empty():
-        return None
+    if not parsed_funding_file.exists():
+        aws_df = pl.DataFrame()
+    else:
+        aws_df = pl.read_parquet(parsed_funding_file, columns=["candle_begin_time", "funding_rate"])
 
     # Get API data file
     api_funding_file = BINANCE_DATA_DIR / "api_data" / trade_type.value / "funding_rate" / f"{symbol}.pqt"
 
     # If API data doesn't exist, return only AWS data
     if not api_funding_file.exists():
-        return aws_df
-
-    # Read API data
-    api_df = pl.read_parquet(api_funding_file, columns=aws_df.columns)
+        api_df = pl.DataFrame()
+    else:
+        api_df = pl.read_parquet(api_funding_file, columns=["candle_begin_time", "funding_rate"])
 
     # Merge the dataframes, keeping all rows from both sources
-    merged_df = pl.concat([aws_df, api_df])
+    if aws_df.is_empty() and api_df.is_empty():
+        return None
+    elif aws_df.is_empty() and not api_df.is_empty():
+        merged_df = api_df
+    elif api_df.is_empty() and not aws_df.is_empty():
+        merged_df = aws_df
+    else:
+        merged_df = pl.concat([aws_df, api_df])
 
     # Remove duplicates and sort by timestamp
     merged_df = merged_df.unique(subset=["candle_begin_time"], keep="last").sort("candle_begin_time")

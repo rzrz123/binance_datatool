@@ -11,7 +11,7 @@ from tqdm import tqdm
 from config.config import BINANCE_DATA_DIR, N_JOBS, TradeType
 from generate.util import list_results_kline_symbols
 from util.concurrent import mp_env_init
-from util.log_kit import divider, logger
+from util.log_kit import logger
 from util.time import convert_interval_to_timedelta
 
 
@@ -40,12 +40,12 @@ def polars_calc_resample(df: pl.DataFrame, time_interval: str, resample_interval
     ldf = df.lazy()
 
     # Add a new column for the end time of each kline
-    ldf = ldf.with_columns((pl.col("candle_begin_time") + time_interval).alias("candle_end_time"))
+    # ldf = ldf.with_columns((pl.col("candle_begin_time") + time_interval).alias("candle_end_time"))
 
     # Aggregation rules
     agg = [
-        pl.col("candle_begin_time").first().alias("candle_begin_time_real"),  # Real start time of the resampled kline
-        pl.col("candle_end_time").last(),  # End time of the resampled kline
+        # pl.col("candle_begin_time").first().alias("candle_begin_time_real"),  # Real start time of the resampled kline
+        # pl.col("candle_end_time").last(),  # End time of the resampled kline
         pl.col("symbol").last(),  # Symbol of the resampled kline
         pl.col("open").first(),  # Opening price of the resampled kline
         pl.col("high").max(),  # Highest price during the resampled period
@@ -74,13 +74,13 @@ def polars_calc_resample(df: pl.DataFrame, time_interval: str, resample_interval
         ])
 
     # Group the data by the start time of the klines, resampling to the specified interval with the given offset
-    ldf = ldf.group_by_dynamic("candle_begin_time", every=resample_interval, offset=offset).agg(agg)
+    ldf = ldf.group_by_dynamic("candle_begin_time", every=resample_interval, offset=offset).agg(agg).fill_null(0)
 
     # Filter out klines that are shorter than the specified resample interval
-    ldf = ldf.filter((pl.col("candle_end_time") - pl.col("candle_begin_time_real")) == resample_interval)
+    # ldf = ldf.filter((pl.col("candle_end_time") - pl.col("candle_begin_time_real")) == resample_interval)
 
     # Drop the temporary columns used for calculations
-    ldf = ldf.drop(["candle_begin_time_real", "candle_end_time"])
+    # ldf = ldf.drop(["candle_begin_time_real", "candle_end_time"])
 
     # Collect the results into a DataFrame and return
     return ldf.collect()

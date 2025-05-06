@@ -5,8 +5,8 @@ from typing import Optional
 import config
 from config import TradeType, BINANCE_DATA_DIR
 from api.binance import BinanceFetcher
-from aws.funding.util import local_list_funding_symbols
-from util.log_kit import divider, logger
+from aws.kline.util import local_list_kline_symbols
+from util.log_kit import logger
 from util.network import create_aiohttp_session
 
 
@@ -37,6 +37,6 @@ async def download_funding_rates(trade_type: TradeType, symbols: list[str], http
 
 
 async def download_funding_rates_all(trade_type: TradeType, http_proxy: Optional[str]):
-    divider(f"BHDS Recent {trade_type.value} Funding Rates API Download")
-    symbols = local_list_funding_symbols(trade_type)
+    logger.info(f"BHDS Recent {trade_type.value} Funding Rates API Download")
+    symbols = local_list_kline_symbols(trade_type, "1m")
     await download_funding_rates(trade_type, symbols, http_proxy)
