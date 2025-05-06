@@ -18,7 +18,7 @@ async def download_funding_for_symbol(funding_dir: Path, symbol: str, fetcher: B
 
 
 async def download_funding_rates(trade_type: TradeType, symbols: list[str], http_proxy: Optional[str]):
-    logger.info(f"Start Download {trade_type.value} {symbols[0]} -- {symbols[-1]} Funding Rates from Binance API")
+    logger.debug(f"Start Download {trade_type.value} {symbols[0]} -- {symbols[-1]} Funding Rates from Binance API")
 
     funding_dir = BINANCE_DATA_DIR / "api_data" / trade_type.value / "funding_rate"
     funding_dir.mkdir(parents=True, exist_ok=True)
@@ -33,7 +33,7 @@ async def download_funding_rates(trade_type: TradeType, symbols: list[str], http
         tasks = [download_funding_for_symbol(funding_dir, symbol, fetcher) for symbol in symbols]
         await asyncio.gather(*tasks)
 
-    logger.info(f"{trade_type.value} {symbols[0]} -- {symbols[-1]} API Funding Rates download successfully")
+    logger.debug(f"{trade_type.value} {symbols[0]} -- {symbols[-1]} API Funding Rates download successfully")
 
 
 async def download_funding_rates_all(trade_type: TradeType, http_proxy: Optional[str]):

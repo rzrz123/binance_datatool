@@ -60,6 +60,8 @@ def gen_kline(
         df_funding = merge_funding_rates(trade_type, symbol)
         if df_funding is not None and not df_funding.is_empty():
             df = df.join(df_funding, on="candle_begin_time", how="left").fill_null(0)
+        else:
+            df = df.with_columns(pl.lit(0).alias("funding_rate"), pl.lit(0).alias("funding_price"), pl.lit(0).alias("funding_time"))
 
     splited_dfs = {symbol: df}
     if split_gaps:
@@ -78,6 +80,7 @@ def gen_kline(
 
     for symbol, df in splited_dfs.items():
         df = fill_kline_gaps(df, time_interval)
+        df = df.with_columns(pl.lit(symbol).alias("symbol"))
         df.write_parquet(results_dir / f"{symbol}.pqt")
 
     return symbol

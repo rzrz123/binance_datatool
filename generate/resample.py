@@ -46,6 +46,7 @@ def polars_calc_resample(df: pl.DataFrame, time_interval: str, resample_interval
     agg = [
         pl.col("candle_begin_time").first().alias("candle_begin_time_real"),  # Real start time of the resampled kline
         pl.col("candle_end_time").last(),  # End time of the resampled kline
+        pl.col("symbol").last(),  # Symbol of the resampled kline
         pl.col("open").first(),  # Opening price of the resampled kline
         pl.col("high").max(),  # Highest price during the resampled period
         pl.col("low").min(),  # Lowest price during the resampled period
