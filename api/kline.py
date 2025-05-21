@@ -9,7 +9,7 @@ import config
 from api.binance import BinanceFetcher
 from aws.kline.util import local_list_kline_symbols
 from config import TradeType
-from util.log_kit import divider, logger
+from util.log_kit import logger
 from util.network import create_aiohttp_session
 from util.time import async_sleep_until_run_time, convert_date, convert_interval_to_timedelta, next_run_time
 from util.ts_manager import TSManager
