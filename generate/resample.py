@@ -9,10 +9,14 @@ import polars as pl
 from tqdm import tqdm
 
 from config.config import BINANCE_DATA_DIR, N_JOBS, TradeType
-from generate.util import list_results_kline_symbols
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 from util.time import convert_interval_to_timedelta
+
+def list_results_kline_symbols(trade_type: TradeType, time_interval: str):
+    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
+    symbols = sorted(p.stem for p in results_dir.glob("*.pqt"))
+    return symbols
 
 
 def polars_calc_resample(df: pl.DataFrame, time_interval: str, resample_interval: str, offset: str | timedelta) -> pl.DataFrame:

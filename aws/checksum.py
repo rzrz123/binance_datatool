@@ -78,8 +78,7 @@ def get_verified_aws_data_files(symbol_dir: Path) -> list[Path]:
 
 def verify_multi_process(unverified_files):
     num_success, num_fail = 0, 0
-    with ProcessPoolExecutor(max_workers=config.N_JOBS, mp_context=mp.get_context('spawn'),
-                             initializer=mp_env_init) as exe:
+    with ProcessPoolExecutor(max_workers=config.N_JOBS, mp_context=mp.get_context('spawn'), initializer=mp_env_init) as exe:
         tasks = [exe.submit(verify_aws_data_file, kline_file) for kline_file in unverified_files]
         for task in as_completed(tasks):
             is_success = task.result()

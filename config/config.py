@@ -4,7 +4,7 @@ from pathlib import Path
 
 BINANCE_DATA_DIR = Path.home() / 'dev' / 'babylake' / 'binance_data'
 
-N_JOBS = int(os.getenv('CRYPTO_NJOBS', os.cpu_count() - 2))
+N_JOBS = int(os.getenv('CRYPTO_NJOBS', os.cpu_count() - 2)) # type: ignore
 
 HTTP_TIMEOUT_SEC = 15
 
