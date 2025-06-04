@@ -7,7 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 from util.log_kit import logger
 
-from config import config
+from config import BYBIT_DATA_DIR
 from api.binance import BinanceBaseApi, BinanceRequestException
 from util.network import create_aiohttp_session
 
@@ -101,7 +101,7 @@ async def download_bybit_linear_klines_symbol(api: BybitLinearApi, symbol_info: 
     pbar.update(1)
     # 0. read parquet if exists
     filename =  f"{symbol_info['symbol']}.pqt"
-    kline_dir = config.BYBIT_DATA_DIR / "linear" / "klines" / symbol_info['symbol'] / "1m"
+    kline_dir = BYBIT_DATA_DIR / "linear" / "klines" / symbol_info['symbol'] / "1m"
     kline_dir.mkdir(parents=True, exist_ok=True)
     if (kline_dir / filename).exists():
         existing_df = pd.read_parquet(kline_dir / filename)
@@ -167,7 +167,7 @@ async def download_bybit_linear_funding_rates_symbol(api: BybitLinearApi, symbol
 
     # 0. read parquet if exists
     filename =  f"{symbol_info['symbol']}.pqt"
-    dir_funding = config.BYBIT_DATA_DIR / "linear" / "funding"
+    dir_funding = BYBIT_DATA_DIR / "linear" / "funding"
     dir_funding.mkdir(parents=True, exist_ok=True)
     if (dir_funding / filename).exists():
         existing_df = pd.read_parquet(dir_funding / filename)

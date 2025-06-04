@@ -1,11 +1,10 @@
 from itertools import chain
 from typing import List
 
-import config
 from aws.checksum import get_unverified_aws_data_files, verify_multi_process
 from aws.client_async import AwsFundingRateClient
 from aws.funding.util import local_list_funding_symbols
-from config import DataFrequency, TradeType
+from config import DataFrequency, TradeType, N_JOBS
 from util.log_kit import logger
 
 
@@ -23,7 +22,7 @@ def verify_funding_rates(trade_type: TradeType, symbols: List[str]):
         logger.debug("All files verified")
         return
 
-    logger.debug(f"num_unverified={len(unverified_files)}, n_jobs={config.N_JOBS}")
+    logger.debug(f"num_unverified={len(unverified_files)}, n_jobs={N_JOBS}")
 
     num_success, num_fail = verify_multi_process(unverified_files)
 

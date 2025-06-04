@@ -10,11 +10,10 @@ from zipfile import ZipFile
 import polars as pl
 from tqdm import tqdm
 
-import config
 from aws.checksum import get_verified_aws_data_files
 from aws.client_async import AwsKlineClient
 from aws.kline.util import local_list_kline_symbols
-from config import DataFrequency, TradeType
+from config import DataFrequency, TradeType, N_JOBS, BINANCE_DATA_DIR
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 from util.time import convert_interval_to_timedelta
@@ -111,10 +110,10 @@ def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: 
 
 
 def parse_klines(trade_type: TradeType, time_interval: str, symbols: list[str], force_update: bool):
-    logger.debug(f"trade_type={trade_type.value}, time_interval={time_interval}, num_symbols={len(symbols)}, n_jobs={config.N_JOBS}")
+    logger.debug(f"trade_type={trade_type.value}, time_interval={time_interval}, num_symbols={len(symbols)}, n_jobs={N_JOBS}")
 
     aws_local_kline_dir = AwsKlineClient.LOCAL_DIR / AwsKlineClient.get_base_dir(trade_type, DataFrequency.daily)
-    parsed_kline_dir = config.BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "klines"
+    parsed_kline_dir = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "klines"
 
     thres = timedelta(days=1) // convert_interval_to_timedelta(time_interval)
 
@@ -123,7 +122,7 @@ def parse_klines(trade_type: TradeType, time_interval: str, symbols: list[str], 
     logger.debug(f"thres={thres}")
 
     with ProcessPoolExecutor(
-        max_workers=config.N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init
+        max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init
     ) as exe:
         tasks = []
 

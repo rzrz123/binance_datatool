@@ -8,8 +8,7 @@ import xmltodict
 from aiohttp import ClientSession
 
 from aws.kline.util import split_into_batches
-import config
-from config import DataFrequency, TradeType
+from config import BINANCE_DATA_DIR, DataFrequency, TradeType
 from util.log_kit import logger
 from util.network import async_retry_getter
 
@@ -39,7 +38,7 @@ def find_missings(download_infos: list[tuple[str, Path]]):
 
 class AwsClient(ABC):
     PREFIX = 'https://s3-ap-northeast-1.amazonaws.com/data.binance.vision'
-    LOCAL_DIR = config.BINANCE_DATA_DIR / 'aws_data'
+    LOCAL_DIR = BINANCE_DATA_DIR / 'aws_data'
     TYPE_BASE_DIR = {
         TradeType.spot: PurePosixPath('data') / 'spot',
         TradeType.um_futures: PurePosixPath('data') / 'futures' / 'um',
