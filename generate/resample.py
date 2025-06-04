@@ -13,6 +13,7 @@ from util.concurrent import mp_env_init
 from util.log_kit import logger
 from util.time import convert_interval_to_timedelta
 
+
 def list_results_kline_symbols(trade_type: TradeType, time_interval: str):
     results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
     symbols = sorted(p.stem for p in results_dir.glob("*.pqt"))

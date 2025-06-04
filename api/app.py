@@ -7,8 +7,8 @@ from typing_extensions import Annotated
 
 from config import TradeType
 
-from .funding import download_funding_rates, download_funding_rates_all
-from .kline import download_missing_kline_type, api_download_kline, download_missing_kline_symbols
+from .binance import download_funding_rates_all, download_missing_kline_type, api_download_kline
+from .bybit import download_bybit_linear_klines, download_bybit_linear_funding_rates
 
 app = typer.Typer()
 
@@ -56,40 +56,6 @@ def download_aws_missing_kline_type(
 
 
 @app.command()
-def download_aws_missing_kline(
-    trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
-    time_interval: Annotated[
-        str,
-        typer.Argument(help="The time interval for the K-lines, e.g., '1m', '5m', '1h'."),
-    ],
-    symbols: Annotated[
-        list[str],
-        typer.Argument(help="List of trading symbols, e.g., 'BTCUSDT ETHUSDT'."),
-    ],
-    overwrite: Annotated[bool, typer.Option(help="Whether to overwrite existing files")] = False,
-    http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
-):
-    """
-    Download Binance kline data from the Kline API for given symbols that have missing dates in AWS
-    """
-
-    asyncio.run(download_missing_kline_symbols(trade_type, symbols, time_interval, overwrite, http_proxy))
-
-
-@app.command()
-def download_recent_funding(
-    trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
-    symbols: Annotated[list[str], typer.Argument(help="Trading symbols, e.g., 'BTCUSDT' or 'ETHUSDT'.")],
-    http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
-):
-    """
-    Download Binance funding rate for specific symbol from Binance API
-    """
-    asyncio.run(download_funding_rates(trade_type, symbols, http_proxy))
-
-
-
-@app.command()
 def download_recent_funding_type(
     trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
     http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
@@ -99,3 +65,11 @@ def download_recent_funding_type(
     """
     asyncio.run(download_funding_rates_all(trade_type, http_proxy))
 
+
+@app.command()
+def download_bybit_klines_type():
+    asyncio.run(download_bybit_linear_klines())
+
+@app.command()
+def download_bybit_linear_funding_rates_type():
+    asyncio.run(download_bybit_linear_funding_rates())

@@ -48,3 +48,10 @@ python datalake.py generate resample-type um_futures "1h" "0m"
 # python datalake.py generate kline-type spot "1m" --split-gaps --with-vwap --no-with-funding-rates
 # python datalake.py generate resample-type spot "1h" "0m"
 # printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+
+# ================================================
+# download bybit data
+# ================================================
+# printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+# python datalake.py api_data download-bybit-klines-type
+# python datalake.py api_data download-bybit-linear-funding-rates-type
