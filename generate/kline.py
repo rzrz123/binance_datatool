@@ -142,6 +142,7 @@ def fill_kline_gaps(exchange: ExchangeType, df: pl.DataFrame, time_interval: str
     if "avg_price_1m" in df.columns:
         ldf = ldf.with_columns(pl.col("avg_price_1m").fill_null(pl.col("open")))
         ldf = ldf.with_columns(pl.col("avg_price_1m").clip(pl.col("low"), pl.col("high")))
+        ldf = ldf.with_columns(pl.col("avg_price_1m").fill_nan(pl.col("open")))
     
     if 'funding_rate' in df.columns:
         ldf = ldf.with_columns(pl.col("funding_rate").fill_null(0))
