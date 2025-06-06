@@ -9,6 +9,10 @@ N_JOBS = int(os.getenv('CRYPTO_NJOBS', os.cpu_count() - 2)) # type: ignore
 
 HTTP_TIMEOUT_SEC = 15
 
+class ExchangeType(str, Enum):
+    binance = 'binance'
+    bybit = 'bybit'
+
 
 class TradeType(str, Enum):
     spot = 'spot'

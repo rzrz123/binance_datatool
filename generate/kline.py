@@ -1,7 +1,6 @@
 from functools import partial
 from typing import Optional
 import shutil
-import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing as mp
 from datetime import datetime, timedelta
@@ -10,7 +9,7 @@ import polars as pl
 from tqdm import tqdm
 
 from aws.kline.util import local_list_kline_symbols
-from config import BINANCE_DATA_DIR, TradeType, N_JOBS
+from config import BINANCE_DATA_DIR, TradeType, N_JOBS, BYBIT_DATA_DIR, ExchangeType
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 from util.ts_manager import TSManager
@@ -101,7 +100,7 @@ def split_by_gaps(df: pl.DataFrame, df_gap: pl.DataFrame, symbol: str) -> Option
     return result
 
 
-def fill_kline_gaps(df: pl.DataFrame, time_interval: str) -> pl.DataFrame:
+def fill_kline_gaps(exchange: ExchangeType, df: pl.DataFrame, time_interval: str) -> pl.DataFrame:
     """
     Fill gaps between klines by adding rows with 0 volume and previous close price.
 
@@ -147,14 +146,19 @@ def fill_kline_gaps(df: pl.DataFrame, time_interval: str) -> pl.DataFrame:
     if 'funding_rate' in df.columns:
         ldf = ldf.with_columns(pl.col("funding_rate").fill_null(0))
 
-    # Fill volumes with 0
-    ldf = ldf.with_columns(
-        pl.col("volume").fill_null(0),
-        pl.col("quote_volume").fill_null(0),
-        pl.col("trade_num").fill_null(0),
-        pl.col("taker_buy_base_asset_volume").fill_null(0),
-        pl.col("taker_buy_quote_asset_volume").fill_null(0),
-    )
+    if exchange == "binance":
+        ldf = ldf.with_columns(
+            pl.col("volume").fill_null(0),
+            pl.col("quote_volume").fill_null(0),
+            pl.col("trade_num").fill_null(0),
+            pl.col("taker_buy_base_asset_volume").fill_null(0),
+            pl.col("taker_buy_quote_asset_volume").fill_null(0),
+        )
+    elif exchange == "bybit":
+        ldf = ldf.with_columns(
+            pl.col("volume").fill_null(0),
+            pl.col("quote_volume").fill_null(0),
+        )    
 
     return ldf.collect()
 
@@ -253,6 +257,7 @@ def merge_funding_rates(trade_type: TradeType, symbol: str) -> Optional[pl.DataF
 
 
 def gen_kline(
+    exchange: ExchangeType,
     trade_type: TradeType,
     time_interval: str,
     symbol: str,
@@ -283,7 +288,16 @@ def gen_kline(
     Returns:
         Dictionary mapping split symbol names to DataFrames with filled gaps
     """
-    df = merge_klines(trade_type, symbol, time_interval, True)
+    if exchange == "bybit":
+        api_kline_dir = BYBIT_DATA_DIR / "linear" / "klines" / symbol / time_interval
+        api_files = list(api_kline_dir.glob("*.pqt"))
+        df = pl.read_parquet(api_files)
+        results_dir = BYBIT_DATA_DIR / "results_data" / "linear" / time_interval
+    elif exchange == "binance":
+        df = merge_klines(trade_type, symbol, time_interval, True)
+        results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
+    else:
+        raise ValueError(f"Invalid exchange: {exchange}")
 
     if df is None or df.is_empty():
         return
@@ -292,7 +306,12 @@ def gen_kline(
         df = df.with_columns((pl.col("quote_volume") / pl.col("volume")).alias(f"avg_price_{time_interval}"))
 
     if trade_type in (TradeType.um_futures, TradeType.cm_futures) and with_funding_rates:
-        df_funding = merge_funding_rates(trade_type, symbol)
+        if exchange == "bybit":
+            api_funding_file = BYBIT_DATA_DIR / "linear" / "funding" / f"{symbol}.pqt"
+            df_funding = pl.read_parquet(api_funding_file)
+        elif exchange == "binance":
+            df_funding = merge_funding_rates(trade_type, symbol)
+
         if df_funding is not None and not df_funding.is_empty():
             df = df.join(df_funding, on="candle_begin_time", how="left").fill_null(0)
         else:
@@ -308,13 +327,10 @@ def gen_kline(
     if not splited_dfs:
         return
 
-    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
-
-    # Make sure results directory exists
     results_dir.mkdir(parents=True, exist_ok=True)
 
     for symbol, df in splited_dfs.items():
-        df = fill_kline_gaps(df, time_interval)
+        df = fill_kline_gaps(exchange, df, time_interval)
         df = df.with_columns(pl.lit(symbol).alias("symbol"))
         df.write_parquet(results_dir / f"{symbol}.pqt")
 
@@ -322,6 +338,7 @@ def gen_kline(
 
 
 def gen_kline_type(
+    exchange: ExchangeType,
     trade_type: TradeType,
     time_interval: str,
     split_gaps: bool,
@@ -330,32 +347,24 @@ def gen_kline_type(
     with_vwap: bool,
     with_funding_rates: bool,
 ):
-    logger.info(f"BHDS Merge klines for {trade_type.value} {time_interval}")
+    logger.info(f"BHDS Merge klines for {exchange.value} {trade_type.value} {time_interval}")
 
-    results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
-    logger.debug(f"results_dir={results_dir}")
+    if exchange == "bybit":
+        results_dir = BYBIT_DATA_DIR / "results_data" / "linear" / time_interval
+        symbols = [i.parts[-1] for i in BYBIT_DATA_DIR.glob("linear/klines/*USDT")]
+    elif exchange == "binance":
+        results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
+        symbols = local_list_kline_symbols(trade_type, time_interval)
+    else:
+        raise ValueError(f"Invalid exchange: {exchange}")
+
     if results_dir.exists():
-        logger.debug("results_dir exists, removing it")
+        logger.debug(f"results_dir exists, removing {results_dir}")
         shutil.rmtree(results_dir)
-
-    msg = f"split_gaps={split_gaps}"
-    if split_gaps:
-        msg += f" (min_days={min_days}, min_price_chg={min_price_chg})"
-    msg += f"; with_vwap={with_vwap}; with_funding_rates={with_funding_rates}"
-    logger.debug(msg)
-
-    symbols = local_list_kline_symbols(trade_type, time_interval)
-
-    if not symbols:
-        logger.warning(f"No symbols found for {trade_type.value} {time_interval}")
-        return
-
-    logger.debug(f"num_symbols={len(symbols)} ({symbols[0]} -- {symbols[-1]})")
-
-    start_time = time.perf_counter()
 
     run_func = partial(
         gen_kline,
+        exchange=exchange,
         trade_type=trade_type,
         time_interval=time_interval,
         split_gaps=split_gaps,
@@ -369,11 +378,8 @@ def gen_kline_type(
         max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init
     ) as exe:
         tasks = [exe.submit(run_func, symbol=symbol) for symbol in symbols]
-        now = datetime.now()
-        with tqdm(total=len(tasks), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Merge |", colour="green") as pbar:
+        with tqdm(total=len(tasks), ncols=100, desc=f"\033[92m{datetime.now().strftime('%H:%M:%S')}\033[0m | Merge |", colour="green") as pbar:
             for task in as_completed(tasks):
                 symbol = task.result()
                 pbar.set_postfix_str(symbol)
                 pbar.update(1)
-    time_elapsed = (time.perf_counter() - start_time) / 60
-    logger.debug(f"Finished in {time_elapsed:.2f}mins")
