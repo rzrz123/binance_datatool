@@ -9,7 +9,7 @@ import polars as pl
 from tqdm import tqdm
 
 from aws.kline.util import local_list_kline_symbols
-from config import BINANCE_DATA_DIR, TradeType, N_JOBS, BYBIT_DATA_DIR, ExchangeType
+from config import BINANCE_DATA_DIR, TradeType, N_JOBS, BYBIT_DATA_DIR, ExchangeType, OKX_DATA_DIR
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 from util.ts_manager import TSManager
@@ -149,17 +149,15 @@ def fill_kline_gaps(exchange: ExchangeType, df: pl.DataFrame, time_interval: str
 
     if exchange == "binance":
         ldf = ldf.with_columns(
-            pl.col("volume").fill_null(0),
-            pl.col("quote_volume").fill_null(0),
             pl.col("trade_num").fill_null(0),
             pl.col("taker_buy_base_asset_volume").fill_null(0),
             pl.col("taker_buy_quote_asset_volume").fill_null(0),
         )
-    elif exchange == "bybit":
-        ldf = ldf.with_columns(
-            pl.col("volume").fill_null(0),
-            pl.col("quote_volume").fill_null(0),
-        )    
+
+    ldf = ldf.with_columns(
+        pl.col("volume").fill_null(0),
+        pl.col("quote_volume").fill_null(0),
+    )
 
     return ldf.collect()
 
@@ -297,6 +295,11 @@ def gen_kline(
     elif exchange == "binance":
         df = merge_klines(trade_type, symbol, time_interval, True)
         results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
+    elif exchange == "okx":
+        api_kline_dir = OKX_DATA_DIR / "swap" / "klines" / time_interval
+        df = pl.read_parquet(f'{api_kline_dir}/{symbol}.pqt')
+        df = df.rename({'currency_volume': 'quote_volume'})
+        results_dir = OKX_DATA_DIR / "results_data" / 'swap' / time_interval
     else:
         raise ValueError(f"Invalid exchange: {exchange}")
 
@@ -308,10 +311,14 @@ def gen_kline(
 
     if trade_type in (TradeType.um_futures, TradeType.cm_futures) and with_funding_rates:
         if exchange == "bybit":
-            api_funding_file = BYBIT_DATA_DIR / "linear" / "funding" / f"{symbol}.pqt"
-            df_funding = pl.read_parquet(api_funding_file)
+            df_funding = pl.read_parquet(BYBIT_DATA_DIR / "linear" / "funding" / f"{symbol}.pqt")
         elif exchange == "binance":
             df_funding = merge_funding_rates(trade_type, symbol)
+        elif exchange == "okx":
+            try:
+                df_funding = pl.read_parquet(OKX_DATA_DIR / "swap" / "funding" / f"{symbol}.pqt")
+            except FileNotFoundError:
+                df_funding = pl.DataFrame()
 
         if df_funding is not None and not df_funding.is_empty():
             df = df.join(df_funding, on="candle_begin_time", how="left").fill_null(0)
@@ -356,6 +363,9 @@ def gen_kline_type(
     elif exchange == "binance":
         results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
         symbols = local_list_kline_symbols(trade_type, time_interval)
+    elif exchange == "okx":
+        results_dir = OKX_DATA_DIR / "results_data" / 'swap' / 'klines' / time_interval
+        symbols = [i.parts[-1].replace('.pqt','') for i in OKX_DATA_DIR.glob(f"swap/klines/{time_interval}/*USDT.pqt")]
     else:
         raise ValueError(f"Invalid exchange: {exchange}")
 

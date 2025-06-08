@@ -4,6 +4,7 @@ from pathlib import Path
 
 BYBIT_DATA_DIR = Path.home() / 'dev' / 'babylake' / 'bybit_data'
 BINANCE_DATA_DIR = Path.home() / 'dev' / 'babylake' / 'binance_data'
+OKX_DATA_DIR = Path.home() / 'dev' / 'babylake' / 'okx_data'
 
 N_JOBS = int(os.getenv('CRYPTO_NJOBS', os.cpu_count() - 2)) # type: ignore
 
@@ -12,6 +13,7 @@ HTTP_TIMEOUT_SEC = 15
 class ExchangeType(str, Enum):
     binance = 'binance'
     bybit = 'bybit'
+    okx = 'okx'
 
 
 class TradeType(str, Enum):

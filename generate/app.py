@@ -14,11 +14,11 @@ def kline_type(
     exchange: Annotated[ExchangeType, typer.Argument(help="Exchange (binance/bybit)")],
     trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
     time_interval: Annotated[str, typer.Argument(help="K-line time interval, e.g., '1m', '5m', '1h'")],
-    split_gaps: Annotated[bool, typer.Option(help="Whether to split data by gaps")] = True,
+    split_gaps: Annotated[bool, typer.Option(help="Whether to split data by gaps")] = False,
     min_days: Annotated[int, typer.Option(help="Minimum gap days threshold")] = 1,
     min_price_chg: Annotated[float, typer.Option(help="Minimum price change ratio threshold")] = 0.1,
     with_vwap: Annotated[bool, typer.Option(help="Whether to calculate VWAP")] = True,
-    with_funding_rates: Annotated[bool, typer.Option(help="Whether to include funding rates")] = True,
+    with_funding_rates: Annotated[bool, typer.Option(help="Whether to include funding rates")] = False,
 ):
     """
     Merge AWS and API kline data for all symbols of given trade type and time interval.

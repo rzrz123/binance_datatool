@@ -57,3 +57,10 @@ python datalake.py api_data download-bybit-klines-type
 python datalake.py api_data download-bybit-linear-funding-rates-type
 python datalake.py generate kline-type bybit um_futures "1m" --split-gaps --with-vwap --with-funding-rates
 python datalake.py generate resample-type bybit um_futures "1h"
+
+# ================================================
+# download okx data
+# ================================================
+# printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+# python datalake.py generate kline-type okx um_futures "1m" --with-vwap --with-funding-rates
+# python datalake.py generate resample-type okx um_futures "1h"
