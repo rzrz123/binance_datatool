@@ -1,5 +1,6 @@
 import time
 import asyncio
+from datetime import datetime
 from tqdm import tqdm
 import pandas as pd
 from util.log_kit import logger
@@ -89,7 +90,8 @@ async def download_bybit_linear_klines() -> None:
         api = BybitLinearApi(session, '')
         ins_info = await api.aioreq_instruments_info(category='linear')
         ins_info = [i for i in ins_info if i['contractType'] == 'LinearPerpetual']
-        pbar = tqdm(total=len(ins_info), ncols=100, colour="green")
+        now = datetime.now()
+        pbar = tqdm(total=len(ins_info), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Download |", colour="green")
         tasks = [asyncio.create_task(download_bybit_linear_klines_symbol(api, symbol_info, pbar)) for symbol_info in ins_info]
         await asyncio.gather(*tasks)
 
@@ -166,7 +168,8 @@ async def download_bybit_linear_funding_rates() -> None:
         api = BybitLinearApi(session, '')
         ins_info = await api.aioreq_instruments_info(category='linear')
         ins_info = [i for i in ins_info if i['contractType'] == 'LinearPerpetual']
-        pbar = tqdm(total=len(ins_info), ncols=100, colour="green")
+        now = datetime.now()
+        pbar = tqdm(total=len(ins_info), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Download |", colour="green")
         tasks = [asyncio.create_task(download_bybit_linear_funding_rates_symbol(api, symbol_info, pbar)) for symbol_info in ins_info]
         await asyncio.gather(*tasks)
 
@@ -222,6 +225,3 @@ async def download_bybit_linear_funding_rates_symbol(api: BybitLinearApi, symbol
     )
     pbar.set_postfix_str(symbol_info['symbol'])
     pbar.update(1)
-
-if __name__ == "__main__":
-    asyncio.run(download_bybit_linear_funding_rates())
