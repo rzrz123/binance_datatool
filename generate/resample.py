@@ -40,6 +40,8 @@ def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_inte
         pl.col("close").last(),  # Closing price of the resampled kline
         pl.col("volume").sum(),  # Total volume during the resampled period
         pl.col("quote_volume").sum(),  # Total quote volume during the resampled period
+        pl.col("quote_volume").first().alias("quote_volume_algo"),  # Total quote volume during the resampled period
+        pl.col("quote_volume").max().alias("quote_volume_max"),  # Total quote volume during the resampled period
     ]
     if exchange == "binance":
         agg += [
