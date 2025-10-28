@@ -19,10 +19,7 @@ HTTP_PROXY = os.getenv("HTTP_PROXY", None) or os.getenv("http_proxy", None)
 @app.command()
 def download(
     trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
-    symbols: Annotated[
-        list[str],
-        typer.Argument(help="A list of trading symbols, e.g., 'BTCUSDT ETHUSDT'."),
-    ],
+    symbols: Annotated[list[str], typer.Argument(help="A list of trading symbols, e.g., 'BTCUSDT ETHUSDT'.")],
     http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
 ):
     """
@@ -34,10 +31,7 @@ def download(
 @app.command()
 def download_um_futures(
     quote: Annotated[str, typer.Option(help="The quote currency, e.g., 'USDT', 'USDC', 'BTC'.")] = "USDT",
-    contract_type: Annotated[
-        ContractType,
-        typer.Option(help="The type of contract, 'PERPETUAL' or 'DELIVERY'."),
-    ] = ContractType.perpetual,
+    contract_type: Annotated[ContractType, typer.Option(help="The type of contract, 'PERPETUAL' or 'DELIVERY'.")] = ContractType.perpetual,
     http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
 ):
     """
@@ -48,10 +42,7 @@ def download_um_futures(
 
 @app.command()
 def download_cm_futures(
-    contract_type: Annotated[
-        ContractType,
-        typer.Option(help="The type of contract, 'PERPETUAL' or 'DELIVERY'."),
-    ] = ContractType.perpetual,
+    contract_type: Annotated[ContractType, typer.Option(help="The type of contract, 'PERPETUAL' or 'DELIVERY'.")] = ContractType.perpetual,
     http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
 ):
     """

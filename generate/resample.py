@@ -12,7 +12,6 @@ from util.concurrent import mp_env_init
 from util.log_kit import logger
 
 
-
 def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_interval: str) -> pl.DataFrame:
     """
     Resample a Polars kline DataFrame to a higher time frame with an offset.

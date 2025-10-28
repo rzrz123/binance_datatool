@@ -5,19 +5,19 @@ hline() { printf '=%.0s' $(seq 1 ${1:-100}); }
 # ================================================
 # download um data
 # ================================================
-# printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
-# python datalake.py aws_funding download-um-futures
-# python datalake.py aws_funding verify-type-all um_futures
-# python datalake.py aws_funding parse-type-all um_futures
-# python datalake.py api_data download-recent-funding-type um_futures
-# printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
-# python datalake.py aws_kline download-um-futures "1m"
-# python datalake.py aws_kline verify-type-all um_futures "1m"
-# python datalake.py aws_kline parse-type-all um_futures "1m"
-# # python datalake.py api_data download-aws-missing-kline-type um_futures "1m"
-# printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
-# python datalake.py generate kline-type binance um_futures "1m" --split-gaps --with-vwap --with-funding-rates
-# python datalake.py generate resample-type binance um_futures "1h"
+printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+python datalake.py aws_funding download-um-futures
+python datalake.py aws_funding verify-type-all um_futures
+python datalake.py aws_funding parse-type-all um_futures
+python datalake.py api_data download-recent-funding-type um_futures
+printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+python datalake.py aws_kline download-um-futures "1m"
+python datalake.py aws_kline verify-type-all um_futures "1m"
+python datalake.py aws_kline parse-type-all um_futures "1m"
+# python datalake.py api_data download-aws-missing-kline-type um_futures "1m"
+printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+python datalake.py generate kline-type binance um_futures "1m" --split-gaps --with-vwap --with-funding-rates
+python datalake.py generate resample-type binance um_futures "1h"
 # ================================================
 # download cm data
 # ================================================

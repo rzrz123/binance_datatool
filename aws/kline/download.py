@@ -5,7 +5,7 @@ from aws.client_async import AwsKlineClient
 from config import HTTP_TIMEOUT_SEC, ContractType, TradeType
 from util.log_kit import logger
 from util.network import create_aiohttp_session
-from util.symbol_filter import (filter_cm_futures_symbols, filter_spot_symbols, filter_um_futures_symbols)
+from util.symbol_filter import filter_cm_futures_symbols, filter_spot_symbols, filter_um_futures_symbols
 
 
 async def download_klines(trade_type: TradeType, time_interval: str, symbols: List[str], http_proxy: Optional[str]):
