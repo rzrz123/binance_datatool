@@ -66,7 +66,7 @@ def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_inte
     return ldf.collect()
 
 
-def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, resample_interval: str):
+def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, resample_interval: str) -> str:
     """
     Resample a kline DataFrame to a higher time frame with an offset.
     """
@@ -82,12 +82,25 @@ def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, r
 
     # 2. Read kline data
     df = pl.read_parquet(results_dir / "1m" / f"{symbol}.pqt")
+    
+    # 3. Add spot_exist column for futures data
+    if trade_type == TradeType.um_futures:
+        spot_dir = BINANCE_DATA_DIR / "results_data" / "spot" / "1m"
+        spot_files = list(spot_dir.glob(f"{symbol}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
+        if spot_files:
+            spot_df = pl.read_parquet(spot_files[0])
+            df = df.with_columns(pl.col("candle_begin_time").is_between(spot_df["candle_begin_time"].min(), spot_df["candle_begin_time"].max(), closed="both").alias("spot_exist")).fill_null(False)
+        else:
+            similar_files = list(spot_dir.glob(f"[!a-zA-Z]*{symbol}.pqt"))
+            if similar_files:
+                logger.warning(f"Spot data not found for {symbol}, found similar: {[i.stem for i in similar_files if i.stem not in ['1INCHUSDT']]}")
+            df = df.with_columns(pl.lit(False).alias("spot_exist"))
 
-    # 3. Create output directory for this offset
+    # 4. Create output directory for this offset
     resampled_offset_dir = results_dir / resample_interval
     resampled_offset_dir.mkdir(parents=True, exist_ok=True)
 
-    # 4. Read and resample data
+    # 5. Read and resample data
     df_resampled = polars_calc_resample(exchange, df, resample_interval)
     df_resampled.write_parquet(resampled_offset_dir / f"{symbol}.pqt")
 
