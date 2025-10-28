@@ -11,6 +11,7 @@ from config.config import BINANCE_DATA_DIR, N_JOBS, TradeType, BYBIT_DATA_DIR, E
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 
+ONLY_SWAP = ['4USDT','AIAUSDT','CVXUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT']
 
 def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_interval: str) -> pl.DataFrame:
     """
@@ -46,6 +47,9 @@ def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_inte
             pl.col("taker_buy_base_asset_volume").sum(),  # Total taker buy base asset volume during the resampled period
             pl.col("taker_buy_quote_asset_volume").sum(),  # Total taker buy quote asset volume during the resampled period
         ]
+
+    if "spot_exist" in df.columns:
+        agg.append(pl.col("spot_exist").first())
 
     if "avg_price_1m" in df.columns:
         agg.append(pl.col("avg_price_1m").first())
@@ -86,14 +90,14 @@ def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, r
     # 3. Add spot_exist column for futures data
     if trade_type == TradeType.um_futures:
         spot_dir = BINANCE_DATA_DIR / "results_data" / "spot" / "1m"
-        spot_files = list(spot_dir.glob(f"{symbol}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
+        spot_files = list(spot_dir.glob(f"{symbol.replace('SP0_','')}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
         if spot_files:
             spot_df = pl.read_parquet(spot_files[0])
             df = df.with_columns(pl.col("candle_begin_time").is_between(spot_df["candle_begin_time"].min(), spot_df["candle_begin_time"].max(), closed="both").alias("spot_exist")).fill_null(False)
         else:
-            similar_files = list(spot_dir.glob(f"[!a-zA-Z]*{symbol}.pqt"))
-            if similar_files:
-                logger.warning(f"Spot data not found for {symbol}, found similar: {[i.stem for i in similar_files if i.stem not in ['1INCHUSDT']]}")
+            similar_files = list(spot_dir.glob(f"*{symbol.replace('SP0_','').replace('1000','')}.pqt"))
+            if similar_files and symbol not in ONLY_SWAP:
+                logger.warning(f"Spot data not found for {symbol}, found similar: {[i.stem for i in similar_files]}")
             df = df.with_columns(pl.lit(False).alias("spot_exist"))
 
     # 4. Create output directory for this offset
