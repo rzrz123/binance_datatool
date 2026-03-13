@@ -14,7 +14,6 @@ app = typer.Typer()
 
 HTTP_PROXY = os.getenv("HTTP_PROXY", None) or os.getenv("http_proxy", None)
 
-
 @app.command()
 def download_kline(
     trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],

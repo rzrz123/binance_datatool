@@ -6,8 +6,6 @@ from api.binance import BinanceBaseApi
 from util.network import create_aiohttp_session
 
 
-
-
 class OkxSwapApi(BinanceBaseApi):
     PREFIX = 'https://www.okx.com'
 

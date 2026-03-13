@@ -93,10 +93,7 @@ def parse_funding_rates(trade_type: TradeType, symbols: list[str]):
     parsed_funding_dir = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "funding"
     parsed_funding_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.debug(
-        f"trade_type={trade_type.value}, num_symbols={len(symbols)}, n_jobs={N_JOBS}, {symbols[0]} -- {symbols[-1]}"
-    )
-
+    logger.debug(f"trade_type={trade_type.value}, num_symbols={len(symbols)}, n_jobs={N_JOBS}, {symbols[0]} -- {symbols[-1]}")
     logger.debug(f"aws_local_funding_dir={aws_local_funding_dir}")
     logger.debug(f"parsed_funding_dir={parsed_funding_dir}")
 

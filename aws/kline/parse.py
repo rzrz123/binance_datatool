@@ -68,16 +68,9 @@ def read_kline_csv(csv_file):
         ts_unit = "us"
 
     # Cast column types
-    ldf = ldf.with_columns(
-        pl.col("candle_begin_time").cast(pl.Datetime(ts_unit)).dt.replace_time_zone("UTC").dt.cast_time_unit("ms")
-    )
+    ldf = ldf.with_columns(pl.col("candle_begin_time").cast(pl.Datetime(ts_unit)).dt.replace_time_zone("UTC").dt.cast_time_unit("ms"))
 
     return ldf.collect()
-
-
-def get_kline_file_dt(f: Path) -> date:
-    tks = f.stem.split("-")[-3:]
-    return date(year=int(tks[0]), month=int(tks[1]), day=int(tks[2]))
 
 
 def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: Path, thres: int) -> tuple[Path, int]:
@@ -86,7 +79,8 @@ def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: 
     aws_kline_files = get_verified_aws_data_files(aws_symbol_kline_dir)
     aws_partition_files = defaultdict(set)
     for kline_file in aws_kline_files:
-        dt = get_kline_file_dt(kline_file)
+        tks = kline_file.stem.split("-")[-3:]
+        dt = date(year=int(tks[0]), month=int(tks[1]), day=int(tks[2]))
         partition_name = get_partition(dt, DataFrequency.monthly)  # type: ignore
         aws_partition_files[partition_name].add((kline_file, dt))
 
@@ -121,9 +115,7 @@ def parse_klines(trade_type: TradeType, time_interval: str, symbols: list[str], 
     logger.debug(f"parsed_kline_dir={parsed_kline_dir}")
     logger.debug(f"thres={thres}")
 
-    with ProcessPoolExecutor(
-        max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init
-    ) as exe:
+    with ProcessPoolExecutor(max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init) as exe:
         tasks = []
 
         for symbol in symbols:

@@ -16,25 +16,6 @@ HTTP_PROXY = os.getenv('HTTP_PROXY', None) or os.getenv('http_proxy', None)
 
 
 @app.command()
-def download(
-    trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
-    time_interval: Annotated[
-        str,
-        typer.Argument(help="The time interval for the K-lines, e.g., '1m', '5m', '1h'."),
-    ],
-    symbols: Annotated[
-        list[str],
-        typer.Argument(help="A list of trading symbols, e.g., 'BTCUSDT ETHUSDT'."),
-    ],
-    http_proxy: Annotated[Optional[str], typer.Option(help="HTTP proxy address")] = HTTP_PROXY,
-):
-    '''
-    Download Binance klines for specific symbols from AWS data center
-    '''
-    asyncio.run(download_klines(trade_type, time_interval, symbols, http_proxy))
-
-
-@app.command()
 def download_spot(
     time_intervals: Annotated[
         list[str],
@@ -98,24 +79,6 @@ def download_cm_futures(
 
 
 @app.command()
-def verify(
-    trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
-    time_interval: Annotated[
-        str,
-        typer.Argument(help="The time interval for the K-lines, e.g., '1m', '5m', '1h'."),
-    ],
-    symbols: Annotated[
-        list[str],
-        typer.Argument(help="A list of trading symbols, e.g., 'BTCUSDT ETHUSDT'."),
-    ],
-):
-    '''
-    Verify Binance Klines checksums and delete corrupted data for specific symbols
-    '''
-    verify_klines(trade_type, time_interval, symbols)
-
-
-@app.command()
 def verify_type_all(
     trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
     time_intervals: Annotated[
@@ -128,25 +91,6 @@ def verify_type_all(
     '''
     for time_interval in time_intervals:
         verify_all_klines(trade_type, time_interval)
-
-
-@app.command()
-def parse(
-    trade_type: Annotated[TradeType, typer.Argument(help="Type of symbols")],
-    time_interval: Annotated[
-        str,
-        typer.Argument(help="The time interval for the K-lines, e.g., '1m', '5m', '1h'."),
-    ],
-    symbols: Annotated[
-        list[str],
-        typer.Argument(help="A list of trading symbols, e.g., 'BTCUSDT ETHUSDT'."),
-    ],
-    force_update: bool = False
-):
-    '''
-    Parse Binance Klines to Polars DataFrame and Save in Parquet Format
-    '''
-    parse_klines(trade_type, time_interval, symbols, force_update)
 
 
 @app.command()

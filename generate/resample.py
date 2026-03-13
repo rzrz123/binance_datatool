@@ -11,7 +11,7 @@ from config.config import BINANCE_DATA_DIR, N_JOBS, TradeType, BYBIT_DATA_DIR, E
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 
-ONLY_SWAP = ['4USDT','AIAUSDT','CVXUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT']
+ONLY_SWAP = ['4USDT','AIAUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT','CCUSDT', 'IRUSDT', 'USUSDT', 'SP0_AIAUSDT', 'MSTRUSDT']
 
 def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_interval: str) -> pl.DataFrame:
     """
@@ -92,6 +92,8 @@ def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, r
         spot_dir = BINANCE_DATA_DIR / "results_data" / "spot" / "1m"
         spot_files = list(spot_dir.glob(f"{symbol.replace('SP0_','')}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
         if spot_files:
+            if symbol in ONLY_SWAP:
+                logger.warning(f"Spot data found for {symbol} in ONLY_SWAP")
             spot_df = pl.read_parquet(spot_files[0])
             df = df.with_columns(pl.col("candle_begin_time").is_between(spot_df["candle_begin_time"].min(), spot_df["candle_begin_time"].max(), closed="both").alias("spot_exist")).fill_null(False)
         else:

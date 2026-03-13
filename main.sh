@@ -3,6 +3,17 @@
 
 hline() { printf '=%.0s' $(seq 1 ${1:-100}); }
 # ================================================
+# download spot data
+# ================================================
+printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+python datalake.py aws_kline download-spot "1m"
+python datalake.py aws_kline verify-type-all spot "1m"
+python datalake.py aws_kline parse-type-all spot "1m"
+# python datalake.py api_data download-aws-missing-kline-type spot "1m"
+printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
+python datalake.py generate kline-type binance spot "1m" --split-gaps --with-vwap --no-with-funding-rates
+python datalake.py generate resample-type binance spot "1h"
+# ================================================
 # download um data
 # ================================================
 printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
@@ -34,18 +45,6 @@ python datalake.py generate resample-type binance um_futures "1h"
 # printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
 # python datalake.py generate kline-type cm_futures "1m" --split-gaps --with-vwap --with-funding-rates
 # python datalake.py generate resample-type cm_futures "1h" "0m"
-
-# ================================================
-# download spot data
-# ================================================
-printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
-python datalake.py aws_kline download-spot "1m"
-python datalake.py aws_kline verify-type-all spot "1m"
-python datalake.py aws_kline parse-type-all spot "1m"
-# python datalake.py api_data download-aws-missing-kline-type spot "1m"
-printf '\e[32m%s\e[0m | %s |\n' "$(date +%T)" "$(hline)"
-python datalake.py generate kline-type binance spot "1m" --split-gaps --with-vwap --no-with-funding-rates
-python datalake.py generate resample-type binance spot "1h"
 
 # ================================================
 # download bybit data

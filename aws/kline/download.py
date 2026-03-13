@@ -17,7 +17,7 @@ async def download_klines(trade_type: TradeType, time_interval: str, symbols: Li
         logger.debug(f'Use proxy, http_proxy={http_proxy}')
 
     async with create_aiohttp_session(HTTP_TIMEOUT_SEC) as session:
-        kline_client = AwsKlineClient(session=session, trade_type=trade_type, time_interval=time_interval, http_proxy=http_proxy)
+        kline_client = AwsKlineClient(session=session, trade_type=trade_type, time_interval=time_interval, http_proxy=http_proxy) # type: ignore
         kline_files = await kline_client.batch_list_data_files(symbols)
         file_list = list(chain.from_iterable(kline_files.values()))
         kline_client.aws_download(file_list)

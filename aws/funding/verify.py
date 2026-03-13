@@ -11,9 +11,7 @@ from util.log_kit import logger
 def verify_funding_rates(trade_type: TradeType, symbols: List[str]):
     logger.debug(f"trade_type={trade_type.value}, num_symbols={len(symbols)}, " f"{symbols[0]} -- {symbols[-1]}")
 
-    local_funding_dir = AwsFundingRateClient.LOCAL_DIR / AwsFundingRateClient.get_base_dir(
-        trade_type=trade_type, data_freq=DataFrequency.monthly
-    )
+    local_funding_dir = AwsFundingRateClient.LOCAL_DIR / AwsFundingRateClient.get_base_dir(trade_type=trade_type, data_freq=DataFrequency.monthly)
     unverified_files = sorted(
         chain.from_iterable(get_unverified_aws_data_files(local_funding_dir / symbol) for symbol in symbols)
     )

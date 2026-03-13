@@ -31,9 +31,7 @@ def get_partition(dt: datetime, data_freq: DataFrequency) -> str:
             return dt.strftime("%Y%m%d")
 
 
-def get_partition_range(
-    part_start: str, part_end: str, data_freq: DataFrequency
-) -> list[str]:
+def get_partition_range(part_start: str, part_end: str, data_freq: DataFrequency) -> list[str]:
     """
     Generate list of partitions between start and end based on data frequency.
 
@@ -71,9 +69,7 @@ def get_partition_range(
     return [date.strftime(date_format) for date in date_range]
 
 
-def get_partition_start_end(
-    partition_name: str, data_freq: DataFrequency
-) -> tuple[datetime, datetime]:
+def get_partition_start_end(partition_name: str, data_freq: DataFrequency) -> tuple[datetime, datetime]:
     """
     Get start and end datetime of a partition based on its name and frequency.
 
@@ -334,8 +330,8 @@ class TSManager:
         dt_min = df[self.time_key].min()
         dt_max = df[self.time_key].max()
 
-        partition_min = get_partition(dt_min, self.data_freq)
-        partition_max = get_partition(dt_max, self.data_freq)
+        partition_min = get_partition(dt_min, self.data_freq)  # type: ignore
+        partition_max = get_partition(dt_max, self.data_freq)  # type: ignore
 
         partitions_update = get_partition_range(
             partition_min, partition_max, self.data_freq
@@ -396,13 +392,7 @@ class TSManager:
             return None
 
         df_cnt = pl.concat(dfs).sort("dt")
-        df_dt = pl.DataFrame(
-            {
-                "dt": pl.date_range(
-                    df_cnt["dt"].min(), df_cnt["dt"].max(), "1D", eager=True
-                )
-            }
-        )
+        df_dt = pl.DataFrame({"dt": pl.date_range(df_cnt["dt"].min(), df_cnt["dt"].max(), "1D", eager=True)})  # type: ignore
         df_cnt = df_cnt.join(
             df_dt, on="dt", how="full", maintain_order="right", coalesce=True
         )

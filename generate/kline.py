@@ -91,9 +91,6 @@ def split_by_gaps(df: pl.DataFrame, df_gap: pl.DataFrame, symbol: str) -> Option
     if not final_df.is_empty():
         dfs.append(final_df)
 
-    if not dfs:
-        return None
-
     # Generate dict with split symbols using list comprehension
     result = {(f"SP{i}_{symbol}" if i < len(dfs) - 1 else symbol): df for i, df in enumerate(dfs)}
 
@@ -162,7 +159,7 @@ def fill_kline_gaps(exchange: ExchangeType, df: pl.DataFrame, time_interval: str
     return ldf.collect()
 
 
-def merge_klines(trade_type: TradeType, symbol: str, time_interval: str, exclude_empty: bool) -> Optional[pl.DataFrame]:
+def merge_klines(trade_type: TradeType, symbol: str, time_interval: str, exclude_empty: bool) -> pl.DataFrame:
     """
     Merge K-line data from AWS parsed data and API downloaded data
 
@@ -182,35 +179,30 @@ def merge_klines(trade_type: TradeType, symbol: str, time_interval: str, exclude
     ts_mgr = TSManager(parsed_symbol_kline_dir)
     aws_df = ts_mgr.read_all()
     if aws_df is None or aws_df.is_empty():
-        return None
+        return pl.DataFrame()
 
     if exclude_empty:
         aws_df = aws_df.filter(pl.col("volume") > 0)
 
-    # Get API data directory
+    # Get API data directory, Read all API data files
     api_kline_dir = BINANCE_DATA_DIR / "api_data" / trade_type.value / "klines" / symbol / time_interval
-    # Read all API data files
     api_files = list(api_kline_dir.glob("*.pqt"))
-
     if not api_files:
         return aws_df
 
     # Read and concatenate all API data
     api_df = pl.read_parquet(api_files, columns=aws_df.columns)
-
     if exclude_empty:
         api_df = api_df.filter(pl.col("volume") > 0)
 
-    # Merge the dataframes, keeping all rows from both sources
+    # Merge the dataframes, keeping all rows from both sources, remove duplicates and sort by timestamp
     merged_df = pl.concat([aws_df, api_df])
-
-    # Remove duplicates and sort by timestamp
     merged_df = merged_df.unique(subset=["candle_begin_time"], keep="last").sort("candle_begin_time")
 
     return merged_df
 
 
-def merge_funding_rates(trade_type: TradeType, symbol: str) -> Optional[pl.DataFrame]:
+def merge_funding_rates(trade_type: TradeType, symbol: str) -> pl.DataFrame:
     """
     Merge funding rates from AWS parsed data and API downloaded data
 
@@ -241,7 +233,7 @@ def merge_funding_rates(trade_type: TradeType, symbol: str) -> Optional[pl.DataF
 
     # Merge the dataframes, keeping all rows from both sources
     if aws_df.is_empty() and api_df.is_empty():
-        return None
+        return pl.DataFrame()
     elif aws_df.is_empty() and not api_df.is_empty():
         merged_df = api_df
     elif api_df.is_empty() and not aws_df.is_empty():
@@ -287,10 +279,10 @@ def gen_kline(
     Returns:
         Dictionary mapping split symbol names to DataFrames with filled gaps
     """
+    # read kline data
     if exchange == "bybit":
         api_kline_dir = BYBIT_DATA_DIR / "linear" / "klines" / symbol / time_interval
-        api_files = list(api_kline_dir.glob("*.pqt"))
-        df = pl.read_parquet(api_files)
+        df = pl.read_parquet(list(api_kline_dir.glob("*.pqt")))
         results_dir = BYBIT_DATA_DIR / "results_data" / "linear" / time_interval
     elif exchange == "binance":
         df = merge_klines(trade_type, symbol, time_interval, True)
@@ -302,13 +294,14 @@ def gen_kline(
         results_dir = OKX_DATA_DIR / "results_data" / 'swap' / time_interval
     else:
         raise ValueError(f"Invalid exchange: {exchange}")
+    if df.is_empty():
+        return symbol
 
-    if df is None or df.is_empty():
-        return
-
+    # add vwap
     if with_vwap:
         df = df.with_columns((pl.col("quote_volume") / pl.col("volume")).alias(f"avg_price_{time_interval}"))
 
+    # add funding rates
     if trade_type in (TradeType.um_futures, TradeType.cm_futures) and with_funding_rates:
         if exchange == "bybit":
             df_funding = pl.read_parquet(BYBIT_DATA_DIR / "linear" / "funding" / f"{symbol}.pqt")
@@ -320,23 +313,19 @@ def gen_kline(
             except FileNotFoundError:
                 df_funding = pl.DataFrame()
 
-        if df_funding is not None and not df_funding.is_empty():
+        if not df_funding.is_empty():
             df = df.join(df_funding, on="candle_begin_time", how="left").fill_null(0)
         else:
             df = df.with_columns(pl.lit(0).alias("funding_rate"), pl.lit(0).alias("funding_price"), pl.lit(0).alias("funding_time"))
 
+    # split by gaps
     splited_dfs = {symbol: df}
     if split_gaps:
-        df_gap = pl.concat([scan_gaps(df, min_days, min_price_chg), scan_gaps(df, min_days * 2, 0)]).unique(
-            "candle_begin_time", keep="last"
-        )
+        df_gap = pl.concat([scan_gaps(df, min_days, min_price_chg), scan_gaps(df, min_days * 2, 0)]).unique("candle_begin_time", keep="last")
         splited_dfs = split_by_gaps(df, df_gap, symbol)
 
-    if not splited_dfs:
-        return
-
+    # fill gaps and write to results directory
     results_dir.mkdir(parents=True, exist_ok=True)
-
     for symbol, df in splited_dfs.items():
         df = fill_kline_gaps(exchange, df, time_interval)
         df = df.with_columns(pl.lit(symbol).alias("symbol"))
