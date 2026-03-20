@@ -67,10 +67,7 @@ def read_kline_csv(csv_file):
     if df["candle_begin_time"].max() >= (10**15):  # type: ignore
         ts_unit = "us"
 
-    # Cast column types
-    ldf = ldf.with_columns(pl.col("candle_begin_time").cast(pl.Datetime(ts_unit)).dt.replace_time_zone("UTC").dt.cast_time_unit("ms"))
-
-    return ldf.collect()
+    return df.with_columns(pl.col("candle_begin_time").cast(pl.Datetime(ts_unit)).dt.replace_time_zone("UTC").dt.cast_time_unit("ms"))
 
 
 def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: Path, thres: int) -> tuple[Path, int]:

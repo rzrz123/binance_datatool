@@ -1,4 +1,5 @@
 from functools import partial
+from pathlib import Path
 from typing import Optional
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -252,6 +253,7 @@ def gen_kline(
     trade_type: TradeType,
     time_interval: str,
     symbol: str,
+    results_dir: Path,
     split_gaps: bool,
     min_days: int,
     min_price_chg: float,
@@ -270,10 +272,10 @@ def gen_kline(
         trade_type: Type of trading (spot/futures)
         time_interval: Kline time interval
         symbol: Trading pair symbol
+        results_dir: Directory to write output parquet files
         split_gaps: Whether to split data by gaps
         min_days: Minimum gap days threshold
         min_price_chg: Minimum price change ratio threshold
-        exclude_empty: Whether to exclude klines with 0 volume
         with_vwap: Whether to calculate vwap
         with_funding_rates: Whether to include funding rates (Only for perpetual futures)
     Returns:
@@ -283,15 +285,12 @@ def gen_kline(
     if exchange == "bybit":
         api_kline_dir = BYBIT_DATA_DIR / "linear" / "klines" / symbol / time_interval
         df = pl.read_parquet(list(api_kline_dir.glob("*.pqt")))
-        results_dir = BYBIT_DATA_DIR / "results_data" / "linear" / time_interval
     elif exchange == "binance":
         df = merge_klines(trade_type, symbol, time_interval, True)
-        results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / time_interval
     elif exchange == "okx":
         api_kline_dir = OKX_DATA_DIR / "swap" / "klines" / time_interval
         df = pl.read_parquet(f'{api_kline_dir}/{symbol}.pqt')
         df = df.rename({'currency_volume': 'quote_volume'})
-        results_dir = OKX_DATA_DIR / "results_data" / 'swap' / time_interval
     else:
         raise ValueError(f"Invalid exchange: {exchange}")
     if df.is_empty():
@@ -325,7 +324,6 @@ def gen_kline(
         splited_dfs = split_by_gaps(df, df_gap, symbol)
 
     # fill gaps and write to results directory
-    results_dir.mkdir(parents=True, exist_ok=True)
     for symbol, df in splited_dfs.items():
         df = fill_kline_gaps(exchange, df, time_interval)
         df = df.with_columns(pl.lit(symbol).alias("symbol"))
@@ -361,12 +359,14 @@ def gen_kline_type(
     if results_dir.exists():
         logger.debug(f"results_dir exists, removing {results_dir}")
         shutil.rmtree(results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     run_func = partial(
         gen_kline,
         exchange=exchange,
         trade_type=trade_type,
         time_interval=time_interval,
+        results_dir=results_dir,
         split_gaps=split_gaps,
         min_days=min_days,
         min_price_chg=min_price_chg,
