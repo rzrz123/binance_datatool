@@ -42,9 +42,9 @@ def resample_type(
     exchange: Annotated[ExchangeType, typer.Argument(help="Exchange (binance/bybit)")],
     trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
     resample_interval: Annotated[str, typer.Argument(help="Resample interval, e.g., '1h', '4h'")],
-    # base_offset: Annotated[str, typer.Argument(help="Base offset, e.g., '5m', '15m', '30m'")],
+    base_offset: Annotated[str, typer.Argument(help="Base offset, e.g., '5m', '15m', '30m'")],
 ):
     """
     Resample kline data for all symbols of given trade type and resample interval.
     """
-    resample_kline_all(exchange=exchange, trade_type=trade_type, resample_interval=resample_interval)
+    resample_kline_all(exchange=exchange, trade_type=trade_type, resample_interval=resample_interval, base_offset=base_offset)

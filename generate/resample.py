@@ -11,27 +11,30 @@ from config.config import BINANCE_DATA_DIR, N_JOBS, TradeType, BYBIT_DATA_DIR, E
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 
-ONLY_SWAP = ['4USDT','AIAUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT','CCUSDT', 'IRUSDT', 'USUSDT', 'SP0_AIAUSDT', 'MSTRUSDT']
 
-def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_interval: str) -> pl.DataFrame:
+def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, resample_interval: str, base_offset: str) -> str:
     """
-    Resample a Polars kline DataFrame to a higher time frame with an offset.
-    For example, resample 5-minute klines to hourly klines with a 5-minute offset.
-
-    Args:
-        df: Polars kline DataFrame
-        time_interval: Time interval of the klines
-        resample_interval: Time interval to resample to
-        offset_str: Offset to apply to the resampled klines
-
-    Returns:
-        Polars kline DataFrame
+    Resample a kline DataFrame to a higher time frame with an offset.
     """
+    # 1. Get results directory
+    if exchange == "bybit":
+        results_dir = BYBIT_DATA_DIR / "results_data" / "linear"
+    elif exchange == "binance":
+        results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value
+    elif exchange == "okx":
+        results_dir = OKX_DATA_DIR / "results_data" / "swap"
+    else:
+        raise ValueError(f"Invalid exchange: {exchange}")
 
-    # Create a lazy DataFrame for efficient computation
-    ldf = df.lazy()
+    # 2. Create output directory for this offset
+    resampled_offset_dir = results_dir / resample_interval / base_offset
+    resampled_offset_dir.mkdir(parents=True, exist_ok=True)
 
-    # Aggregation rules
+    # 3. Resample data
+    ldf = pl.scan_parquet(results_dir / "1m" / f"{symbol}.pqt")
+    columns = ldf.collect_schema().names()
+
+    # 3.1 Aggregation rules
     agg = [
         pl.col("symbol").last(),  # Symbol of the resampled kline
         pl.col("open").first(),  # Opening price of the resampled kline
@@ -48,85 +51,44 @@ def polars_calc_resample(exchange: ExchangeType, df: pl.DataFrame, resample_inte
             pl.col("taker_buy_quote_asset_volume").sum(),  # Total taker buy quote asset volume during the resampled period
         ]
 
-    if "spot_exist" in df.columns:
+    # 3.2 additional columns if exist
+    if "spot_exist" in columns:
         agg.append(pl.col("spot_exist").first())
 
-    if "avg_price_1m" in df.columns:
+    if "avg_price_1m" in columns:
         agg.append(pl.col("avg_price_1m").first())
 
-    if "funding_rate" in df.columns:
-        # Only consider funding rates with absolute value greater than 0.01 bps
+    if "funding_rate" in columns:
         has_funding_cond = pl.col("funding_rate").abs() > 1e-6
-        # Get the first valid funding rate and its corresponding price and time
         agg.extend([
             pl.col("funding_rate").filter(has_funding_cond).first().alias("funding_rate"),
             pl.col("open").filter(has_funding_cond).first().alias("funding_price"),
             pl.col("candle_begin_time").filter(has_funding_cond).first().alias("funding_time")
         ])
 
-    # Group the data by the start time of the klines, resampling to the specified interval with the given offset
-    ldf = ldf.group_by_dynamic("candle_begin_time", every=resample_interval).agg(agg).fill_null(0)
+    # 3.3 Group the data by the start time of the klines, resampling to the specified interval with the given offset
+    ldf = ldf.group_by_dynamic("candle_begin_time", every=resample_interval, offset=base_offset).agg(agg).fill_null(0)
 
-    return ldf.collect()
-
-
-def resample_kline(exchange: ExchangeType, trade_type: TradeType, symbol: str, resample_interval: str) -> str:
-    """
-    Resample a kline DataFrame to a higher time frame with an offset.
-    """
-    # 1. Get results directory
-    if exchange == "bybit":
-        results_dir = BYBIT_DATA_DIR / "results_data" / "linear"
-    elif exchange == "binance":
-        results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value
-    elif exchange == "okx":
-        results_dir = OKX_DATA_DIR / "results_data" / "swap"
-    else:
-        raise ValueError(f"Invalid exchange: {exchange}")
-
-    # 2. Read kline data
-    df = pl.read_parquet(results_dir / "1m" / f"{symbol}.pqt")
-    
-    # 3. Add spot_exist column for futures data
-    if trade_type == TradeType.um_futures:
-        spot_dir = BINANCE_DATA_DIR / "results_data" / "spot" / "1m"
-        spot_files = list(spot_dir.glob(f"{symbol.replace('SP0_','')}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
-        if spot_files:
-            if symbol in ONLY_SWAP:
-                logger.warning(f"Spot data found for {symbol} in ONLY_SWAP")
-            spot_df = pl.read_parquet(spot_files[0])
-            df = df.with_columns(pl.col("candle_begin_time").is_between(spot_df["candle_begin_time"].min(), spot_df["candle_begin_time"].max(), closed="both").alias("spot_exist")).fill_null(False)
-        else:
-            similar_files = list(spot_dir.glob(f"*{symbol.replace('SP0_','').replace('1000','')}.pqt"))
-            if similar_files and symbol not in ONLY_SWAP:
-                logger.warning(f"Spot data not found for {symbol}, found similar: {[i.stem for i in similar_files]}")
-            df = df.with_columns(pl.lit(False).alias("spot_exist"))
-
-    # 4. Create output directory for this offset
-    resampled_offset_dir = results_dir / resample_interval
-    resampled_offset_dir.mkdir(parents=True, exist_ok=True)
-
-    # 5. Read and resample data
-    df_resampled = polars_calc_resample(exchange, df, resample_interval)
-    df_resampled.write_parquet(resampled_offset_dir / f"{symbol}.pqt")
+    # 3.4 Write the resampled data to the output directory
+    ldf.collect().write_parquet(resampled_offset_dir / f"{symbol}.pqt")
 
     return symbol
 
 
-def resample_kline_all(exchange: ExchangeType, trade_type: TradeType, resample_interval: str):
+def resample_kline_all(exchange: ExchangeType, trade_type: TradeType, resample_interval: str, base_offset: str):
     """
     Resample kline data for all symbols of a given trade type.
     """
     logger.info(f"Resample kline {exchange.value} {trade_type.value} {resample_interval}")
     # 1. Get symbols & resampled directory
     if exchange == "binance":
-        resampled_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / resample_interval
+        resampled_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / resample_interval / base_offset
         results_dir = BINANCE_DATA_DIR / "results_data" / trade_type.value / "1m"
     elif exchange == "bybit":
-        resampled_dir = BYBIT_DATA_DIR / "results_data" / "linear" / resample_interval
+        resampled_dir = BYBIT_DATA_DIR / "results_data" / "linear" / resample_interval / base_offset
         results_dir = BYBIT_DATA_DIR / "results_data" / "linear" / "1m"
     elif exchange == "okx":
-        resampled_dir = OKX_DATA_DIR / "results_data" / "swap" / resample_interval
+        resampled_dir = OKX_DATA_DIR / "results_data" / "swap" / resample_interval / base_offset
         results_dir = OKX_DATA_DIR / "results_data" / "swap" / "1m"
     symbols = sorted(p.stem for p in results_dir.glob("*.pqt"))
 
@@ -141,6 +103,7 @@ def resample_kline_all(exchange: ExchangeType, trade_type: TradeType, resample_i
         exchange=exchange,
         trade_type=trade_type,
         resample_interval=resample_interval,
+        base_offset=base_offset,
     )
 
     with ProcessPoolExecutor(max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init) as exe:

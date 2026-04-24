@@ -16,6 +16,7 @@ from util.log_kit import logger
 from util.ts_manager import TSManager
 from util.time import convert_interval_to_timedelta
 
+ONLY_SWAP = ['4USDT','AIAUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT','CCUSDT', 'IRUSDT', 'USUSDT', 'SP0_AIAUSDT', 'MSTRUSDT', 'IPUSDT']
 
 def scan_gaps(df: pl.DataFrame, min_days: int, min_price_chg: float) -> pl.DataFrame:
     """
@@ -300,8 +301,11 @@ def gen_kline(
     if with_vwap:
         df = df.with_columns((pl.col("quote_volume") / pl.col("volume")).alias(f"avg_price_{time_interval}"))
 
-    # add funding rates
+    # add funding rates & spot exist
     if trade_type in (TradeType.um_futures, TradeType.cm_futures) and with_funding_rates:
+        # ================================
+        # add funding rates
+        # ================================
         if exchange == "bybit":
             df_funding = pl.read_parquet(BYBIT_DATA_DIR / "linear" / "funding" / f"{symbol}.pqt")
         elif exchange == "binance":
@@ -316,6 +320,22 @@ def gen_kline(
             df = df.join(df_funding, on="candle_begin_time", how="left").fill_null(0)
         else:
             df = df.with_columns(pl.lit(0).alias("funding_rate"), pl.lit(0).alias("funding_price"), pl.lit(0).alias("funding_time"))
+        # ================================
+        # add spot exist
+        # ================================
+        if exchange == "binance":
+            spot_dir = BINANCE_DATA_DIR / "results_data" / "spot" / "1m"
+            spot_files = list(spot_dir.glob(f"{symbol.replace('SP0_','')}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
+            if spot_files:
+                if symbol in ONLY_SWAP:
+                    logger.warning(f"Spot data found for {symbol} in ONLY_SWAP")
+                spot_time_range = pl.scan_parquet(spot_files[0]).select(pl.col("candle_begin_time").min().alias("min_time"),pl.col("candle_begin_time").max().alias("max_time")).collect()
+                df = df.with_columns(pl.col("candle_begin_time").is_between(spot_time_range.item(0,"min_time"), spot_time_range.item(0,"max_time"), closed="both").alias("spot_exist")).fill_null(False)
+            else:
+                similar_files = list(spot_dir.glob(f"*{symbol.replace('SP0_','').replace('1000','')}.pqt"))
+                if similar_files and symbol not in ONLY_SWAP:
+                    logger.warning(f"Spot data not found for {symbol}, found similar: {[i.stem for i in similar_files]}")
+                df = df.with_columns(pl.lit(False).alias("spot_exist"))
 
     # split by gaps
     splited_dfs = {symbol: df}
@@ -374,9 +394,7 @@ def gen_kline_type(
         with_funding_rates=with_funding_rates,
     )
 
-    with ProcessPoolExecutor(
-        max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init
-    ) as exe:
+    with ProcessPoolExecutor(max_workers=N_JOBS, mp_context=mp.get_context("spawn"), initializer=mp_env_init) as exe:
         tasks = [exe.submit(run_func, symbol=symbol) for symbol in symbols]
         with tqdm(total=len(tasks), ncols=100, desc=f"\033[92m{datetime.now().strftime('%H:%M:%S')}\033[0m | Merge |", colour="green") as pbar:
             for task in as_completed(tasks):
