@@ -1,22 +1,29 @@
 import asyncio
 import json
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from datetime import time as dtime
 from decimal import Decimal
-from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional, Tuple
 from zoneinfo import ZoneInfo
-from pathlib import Path
-import aiohttp
-import polars as pl
-from tqdm import tqdm
-from dateutil import parser as date_parser
 
-from config import TradeType, BINANCE_DATA_DIR, HTTP_TIMEOUT_SEC
+import aiohttp
+import pandas as pd
+import polars as pl
+from dateutil import parser as date_parser
+from tqdm import tqdm
+
 from aws.kline.util import local_list_kline_symbols
+from config import BINANCE_DATA_DIR, HTTP_TIMEOUT_SEC, TradeType
 from util.log_kit import logger
-from util.network import create_aiohttp_session, async_retry_getter
-from util.time import async_sleep_until_run_time, convert_date, convert_interval_to_timedelta, next_run_time
+from util.network import async_retry_getter, create_aiohttp_session
+from util.time import (
+    async_sleep_until_run_time,
+    convert_date,
+    convert_interval_to_timedelta,
+    next_run_time,
+)
 from util.ts_manager import TSManager
 
 
@@ -133,6 +140,19 @@ class BinanceMarketUMFapi(BinanceBaseMarketApi):
         """
         url = f'{self.PREFIX}/v1/exchangeInfo'
         return await self._aio_get(url, None)
+
+    async def aioreq_list_tradifi_symbols(self) -> list:
+        """
+        Get all symbols
+        """
+        url = f'{self.PREFIX}/v1/exchangeInfo'
+        exchange_info = await self._aio_get(url, None)
+        symbols_info = pd.DataFrame(exchange_info['symbols']) # type: ignore
+        symbols_info['deliveryDate'] = pd.to_datetime(pd.to_numeric(symbols_info['deliveryDate']), unit='ms') # type: ignore
+        symbols_info['baseAsset1k'] = symbols_info['baseAsset'].str.replace('1000','')
+        symbols_info['baseAsset1k'] = symbols_info['baseAsset1k'].str.replace('SATS','1000SATS')
+        symbols_info = symbols_info.query("contractType == 'TRADIFI_PERPETUAL'") 
+        return symbols_info['symbol'].tolist()
 
     async def aioreq_premium_index(self, **kwargs) -> list:
         """

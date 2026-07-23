@@ -7,8 +7,12 @@ from typing_extensions import Annotated
 
 from config import TradeType
 
-from .binance import download_funding_rates_all, download_missing_kline_type, api_download_kline
-from .bybit import download_bybit_linear_klines, download_bybit_linear_funding_rates
+from .binance import (
+    api_download_kline,
+    download_funding_rates_all,
+    download_missing_kline_type,
+)
+from .bybit import download_bybit_linear_funding_rates, download_bybit_linear_klines
 
 app = typer.Typer()
 

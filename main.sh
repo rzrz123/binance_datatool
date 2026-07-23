@@ -30,7 +30,7 @@ python "$ROOT/datalake.py" aws_kline download-um-futures "1m"
 python "$ROOT/datalake.py" aws_kline verify-type-all um_futures "1m"
 python "$ROOT/datalake.py" aws_kline parse-type-all um_futures "1m"
 python "$ROOT/datalake.py" generate kline-type binance um_futures "1m" --split-gaps --with-vwap --with-funding-rates
-ython "$ROOT/datalake.py" generate resample-type binance um_futures "1h" "0m"
+python "$ROOT/datalake.py" generate resample-type binance um_futures "1h" "0m"
 # ================================================
 # download cm data
 # ================================================

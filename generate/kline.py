@@ -1,22 +1,29 @@
+import multiprocessing as mp
+import shutil
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Optional
-import shutil
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing as mp
-from datetime import datetime, timedelta
 
 import polars as pl
 from tqdm import tqdm
 
 from aws.kline.util import local_list_kline_symbols
-from config import BINANCE_DATA_DIR, TradeType, N_JOBS, BYBIT_DATA_DIR, ExchangeType, OKX_DATA_DIR
+from config import (
+    BINANCE_DATA_DIR,
+    BYBIT_DATA_DIR,
+    N_JOBS,
+    OKX_DATA_DIR,
+    ExchangeType,
+    TradeType,
+)
 from util.concurrent import mp_env_init
 from util.log_kit import logger
-from util.ts_manager import TSManager
 from util.time import convert_interval_to_timedelta
+from util.ts_manager import TSManager
 
-ONLY_SWAP = ['4USDT','AIAUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT','CCUSDT', 'IRUSDT', 'USUSDT', 'SP0_AIAUSDT', 'MSTRUSDT', 'IPUSDT']
+ONLY_SWAP = ['LABUSDT','UBUSDT','OUSDT', 'TERUSDT', 'EWTUSDT','4USDT','AIAUSDT','AKEUSDT','BUSDT','HUSDT','INUSDT','MUSDT','OLUSDT','ONUSDT','QUSDT','TAUSDT','1000XUSDT','CCUSDT', 'IRUSDT', 'USUSDT', 'SP0_AIAUSDT', 'MSTRUSDT', 'IPUSDT', 'ARMUSDT','BEUSDT','VUSDT']
 
 def scan_gaps(df: pl.DataFrame, min_days: int, min_price_chg: float) -> pl.DataFrame:
     """
@@ -325,7 +332,7 @@ def gen_kline(
         # ================================
         if exchange == "binance":
             spot_dir = BINANCE_DATA_DIR / "results_data" / "spot" / "1m"
-            spot_files = list(spot_dir.glob(f"{symbol.replace('SP0_','')}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt"))
+            spot_files = list(spot_dir.glob(f"{symbol.replace('SP0_','')}.pqt")) + list(spot_dir.glob(f"{symbol.replace('1000','')}.pqt")) + list(spot_dir.glob(f"1000{symbol}.pqt"))
             if spot_files:
                 if symbol in ONLY_SWAP:
                     logger.warning(f"Spot data found for {symbol} in ONLY_SWAP")

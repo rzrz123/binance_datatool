@@ -1,11 +1,16 @@
 from itertools import chain
 from typing import List, Optional
 
+from api.binance import BinanceMarketUMFapi
 from aws.client_async import AwsKlineClient
 from config import HTTP_TIMEOUT_SEC, ContractType, TradeType
 from util.log_kit import logger
 from util.network import create_aiohttp_session
-from util.symbol_filter import filter_cm_futures_symbols, filter_spot_symbols, filter_um_futures_symbols
+from util.symbol_filter import (
+    filter_cm_futures_symbols,
+    filter_spot_symbols,
+    filter_um_futures_symbols,
+)
 
 
 async def download_klines(trade_type: TradeType, time_interval: str, symbols: List[str], http_proxy: Optional[str]):
@@ -27,6 +32,12 @@ async def aws_list_kline_symbols(trade_type: TradeType, time_interval: str, http
     async with create_aiohttp_session(HTTP_TIMEOUT_SEC) as session:
         kline_client = AwsKlineClient(session=session, trade_type=trade_type, time_interval=time_interval, http_proxy=http_proxy)
         symbols = await kline_client.list_symbols()
+        if trade_type == TradeType.um_futures:
+            api_client = BinanceMarketUMFapi(session, http_proxy)
+            tradifi_symbols = await api_client.aioreq_list_tradifi_symbols()
+            # remove symbols that are in tradifi_symbols
+            symbols = [symbol for symbol in symbols if symbol not in tradifi_symbols]
+
     return symbols
 
 

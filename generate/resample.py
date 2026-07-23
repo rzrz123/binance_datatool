@@ -7,7 +7,14 @@ from functools import partial
 import polars as pl
 from tqdm import tqdm
 
-from config.config import BINANCE_DATA_DIR, N_JOBS, TradeType, BYBIT_DATA_DIR, ExchangeType, OKX_DATA_DIR
+from config.config import (
+    BINANCE_DATA_DIR,
+    BYBIT_DATA_DIR,
+    N_JOBS,
+    OKX_DATA_DIR,
+    ExchangeType,
+    TradeType,
+)
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 

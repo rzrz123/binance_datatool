@@ -3,7 +3,7 @@ import shutil
 import time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import date, timedelta, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -13,7 +13,7 @@ from tqdm import tqdm
 from aws.checksum import get_verified_aws_data_files
 from aws.client_async import AwsKlineClient
 from aws.kline.util import local_list_kline_symbols
-from config import DataFrequency, TradeType, N_JOBS, BINANCE_DATA_DIR
+from config import BINANCE_DATA_DIR, N_JOBS, DataFrequency, TradeType
 from util.concurrent import mp_env_init
 from util.log_kit import logger
 from util.time import convert_interval_to_timedelta
