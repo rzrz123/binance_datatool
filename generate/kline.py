@@ -154,12 +154,14 @@ def gen_kline(trade_type: TradeType, time_interval: str, symbol: str, results_di
     # 2. 附加 funding_rate + spot_exist (仅合约)
     # ================================================
     if trade_type in (TradeType.um_futures, TradeType.cm_futures) and with_funding_rates:
+        # 2.1. 合并 funding_rate
         df_funding = merge_funding_rates(trade_type, symbol)
         if not df_funding.is_empty():
             df = df.join(df_funding, on='candle_begin_time', how='left').fill_null(0)
         else:
-            df = df.with_columns(pl.lit(0).alias('funding_rate'), pl.lit(0).alias('funding_price'), pl.lit(0).alias('funding_time'))
+            df = df.with_columns(pl.lit(0).alias('funding_rate'))
 
+        # 2.2. 附加 spot_exist
         spot_dir = BINANCE_DATA_DIR / 'results_data' / 'spot' / '1m'
         base_sym = symbol.replace('SP0_', '')
         spot_files = list(spot_dir.glob(f'{base_sym}.pqt')) + list(spot_dir.glob(f'{symbol.replace("1000", "")}.pqt')) + list(spot_dir.glob(f'1000{symbol}.pqt'))

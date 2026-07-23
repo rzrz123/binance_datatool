@@ -53,11 +53,7 @@ async def download_aws_data(
     if not symbols:
         return
 
-    symbols = sorted(symbols)
-    if time_interval is None:
-        logger.debug(f'trade_type={trade_type.value}, num_symbols={len(symbols)}, {symbols[0]} -- {symbols[-1]}')
-    else:
-        logger.debug(f'trade_type={trade_type.value}, time_interval={time_interval}, num_symbols={len(symbols)}')
+    logger.debug(f'trade_type={trade_type.value}, product={product}, num_symbols={len(symbols)}')
 
     async with create_aiohttp_session(HTTP_TIMEOUT_SEC) as session:
         client = AwsClient(session=session, trade_type=trade_type, product=product, time_interval=time_interval)
@@ -82,20 +78,13 @@ async def aws_list_symbols(trade_type: TradeType, product: str, time_interval: s
 # === Funding wrappers ===
 
 
-async def download_funding_rates(trade_type: TradeType, symbols: list[str]):
-    if not symbols:
-        return
-    logger.debug('Start Download Funding Rates from Binance AWS')
-    await download_aws_data(trade_type, 'fundingRate', symbols)
-
-
 async def download_um_funding_rates(quote: str, contract_type: ContractType):
     logger.info('BHDS Download USDⓈ-M Futures Funding Rates')
     logger.debug(f'quote={quote}, contract_type={contract_type}')
 
     symbols = await aws_list_symbols(TradeType.um_futures, 'fundingRate')
     filtered_symbols = filter_um_futures_symbols(quote, contract_type, symbols)
-    await download_funding_rates(trade_type=TradeType.um_futures, symbols=filtered_symbols)
+    await download_aws_data(TradeType.um_futures, 'fundingRate', filtered_symbols)
 
 
 async def download_cm_funding_rates(contract_type: ContractType):
@@ -104,14 +93,10 @@ async def download_cm_funding_rates(contract_type: ContractType):
 
     symbols = await aws_list_symbols(TradeType.cm_futures, 'fundingRate')
     filtered_symbols = filter_cm_futures_symbols(contract_type, symbols)
-    await download_funding_rates(trade_type=TradeType.cm_futures, symbols=filtered_symbols)
+    await download_aws_data(TradeType.cm_futures, 'fundingRate', filtered_symbols)
 
 
 # === Kline wrappers ===
-
-
-async def download_klines(trade_type: TradeType, time_interval: str, symbols: list[str]):
-    await download_aws_data(trade_type, 'klines', symbols, time_interval=time_interval)
 
 
 async def download_spot_klines(time_interval: str, quote: str, keep_stablecoins: bool, leverage_coins: bool):
@@ -121,18 +106,18 @@ async def download_spot_klines(time_interval: str, quote: str, keep_stablecoins:
     )
     symbols = await aws_list_symbols(TradeType.spot, 'klines', time_interval)
     filtered_symbols = filter_spot_symbols(quote, keep_stablecoins, leverage_coins, symbols)
-    await download_klines(trade_type=TradeType.spot, time_interval=time_interval, symbols=filtered_symbols)
+    await download_aws_data(TradeType.spot, 'klines', filtered_symbols, time_interval=time_interval)
 
 
 async def download_um_klines(time_interval: str, quote: str, contract_type: ContractType):
     logger.info(f'BHDS Download USDⓈ-M Futures {time_interval} Klines, quote={quote}')
     symbols = await aws_list_symbols(TradeType.um_futures, 'klines', time_interval)
     filtered_symbols = filter_um_futures_symbols(quote, contract_type, symbols)
-    await download_klines(trade_type=TradeType.um_futures, time_interval=time_interval, symbols=filtered_symbols)
+    await download_aws_data(TradeType.um_futures, 'klines', filtered_symbols, time_interval=time_interval)
 
 
 async def download_cm_klines(time_interval: str, contract_type: ContractType):
     logger.info(f'BHDS Download COIN-M Futures {time_interval} Klines, contract_type={contract_type}')
     symbols = await aws_list_symbols(TradeType.cm_futures, 'klines', time_interval)
     filtered_symbols = filter_cm_futures_symbols(contract_type, symbols)
-    await download_klines(trade_type=TradeType.cm_futures, time_interval=time_interval, symbols=filtered_symbols)
+    await download_aws_data(TradeType.cm_futures, 'klines', filtered_symbols, time_interval=time_interval)

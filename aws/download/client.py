@@ -14,7 +14,6 @@ from util.network import async_retry_getter
 _DEFAULT_DATA_FREQ = {
     'fundingRate': DataFrequency.monthly,
     'klines': DataFrequency.daily,
-    'liquidationSnapshot': DataFrequency.daily,
 }
 
 

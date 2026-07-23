@@ -1,6 +1,6 @@
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from zipfile import ZipFile
 
 import polars as pl
@@ -86,9 +86,7 @@ def parse_funding_rates(trade_type: TradeType, symbols: list[str]):
     """
     logger.debug("Start parsing funding rates")
 
-    aws_local_funding_dir = AwsClient.LOCAL_DIR / AwsClient.get_base_dir(
-        trade_type, 'fundingRate', DataFrequency.monthly
-    )
+    aws_local_funding_dir = AwsClient.LOCAL_DIR / AwsClient.get_base_dir(trade_type, 'fundingRate', DataFrequency.monthly)
 
     parsed_funding_dir = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "funding"
     parsed_funding_dir.mkdir(parents=True, exist_ok=True)
