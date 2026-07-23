@@ -88,10 +88,9 @@ The CLI entry point is `bhds.py` and includes several command groups:
 │ --help                        Show this message and exit.                               │
 ╰─────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ──────────────────────────────────────────────────────────────────────────────╮
-│ aws_funding       Commands for maintaining Binance AWS funding rate data.               │
-│ aws_kline         Commands for maintaining Binance AWS K-line data.                     │
+│ aws_download      Download and verify Binance AWS data.                                 │
+│ aws_parse         Parse Binance AWS data into parquet.                                  │
 │ api_data          Commands for maintaining Binance API data.                            │
-│ aws_liquidation   Commands for maintaining Binance AWS liquidation snapshot data.       │
 │ generate          Commands to generate the resulting data.                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────╯
 ```
@@ -102,43 +101,38 @@ Use `--help` with any command or subcommand to see its specific usage.
 For example:
 
 ```bash
-> python bhds.py aws_funding --help
+> python datalake.py aws_download --help
 
- Usage: bhds.py aws_funding [OPTIONS] COMMAND [ARGS]...                                                        
-                                                                                                               
- Commands for maintaining Binance AWS funding rate data.                                                       
-                                                                                                               
-╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                                                 │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ──────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ download              Download Binance funding rates for specific symbols from AWS data center              │
-│ download-um-futures   Download Binance USDⓈ-M Futures funding rates                                         │
-│ download-cm-futures   Download Binance Coin Futures funding rates                                           │
-│ verify                Verify Binance funding rates for specific symbols from AWS data center                │
-│ verify-type-all       Verify Binance funding rates for all symbols with the given trade type                │
-│ parse                 Parse Binance funding rates for specific symbols                 │
-│ parse-type-all        Parse Binance funding rates for all symbols with the given trade type                 │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ Usage: datalake.py aws_download [OPTIONS] COMMAND [ARGS]...
+
+ Download and verify Binance AWS data.
+
+╭─ Commands ──────────────────────────────────────────────────────────────────────────────╮
+│ um-funding       Download and verify Binance USDⓈ-M Futures funding rates               │
+│ cm-funding       Download and verify Binance Coin Futures funding rates                 │
+│ spot-klines      Download and verify Binance spot klines                                │
+│ um-klines        Download and verify Binance USDⓈ-M Futures klines                      │
+│ cm-klines        Download and verify Binance COIN-M Futures klines                      │
+╰─────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ```bash
-> python bhds.py aws_funding download-um-futures --help
+> python datalake.py aws_download um-funding --help
 
- Usage: bhds.py aws_funding download-um-futures [OPTIONS]
+ Usage: datalake.py aws_download um-funding [OPTIONS]
 
  Download Binance USDⓈ-M Futures funding rates
 
-╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --quote                TEXT                  The quote currency, e.g., 'USDT', 'USDC', 'BTC'.               │
-│                                              [default: USDT]                                                │
-│ --contract-type        [PERPETUAL|DELIVERY]  The type of contract, 'PERPETUAL' or 'DELIVERY'.               │
-│                                              [default: PERPETUAL]                                           │
-│ --http-proxy           TEXT                  HTTP proxy address [default: None]                             │
-│ --help                                       Show this message and exit.                                    │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────╮
+│ --quote                TEXT                  The quote currency, e.g., 'USDT', 'USDC',  │
+│                                              'BTC'.                                     │
+│                                              [default: USDT]                            │
+│ --contract-type        [PERPETUAL|DELIVERY]  The type of contract, 'PERPETUAL' or       │
+│                                              'DELIVERY'.                                │
+│                                              [default: PERPETUAL]                       │
+│ --help                                       Show this message and exit.                │
+╰─────────────────────────────────────────────────────────────────────────────────────────╯
 ```
-
 ### Shell Scripts
 
 BHDS provides several shell scripts for common workflows.

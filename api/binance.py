@@ -1,11 +1,8 @@
 import asyncio
 import json
-from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from datetime import time as dtime
 from decimal import Decimal
-from pathlib import Path
-from typing import Optional, Tuple
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -14,7 +11,7 @@ import polars as pl
 from dateutil import parser as date_parser
 from tqdm import tqdm
 
-from aws.kline.util import local_list_kline_symbols
+from aws.download.util import local_list_kline_symbols
 from config import BINANCE_DATA_DIR, HTTP_TIMEOUT_SEC, TradeType
 from util.log_kit import logger
 from util.network import async_retry_getter, create_aiohttp_session
@@ -57,9 +54,8 @@ class BinanceAPIException(Exception):
 
 class BinanceBaseApi:
 
-    def __init__(self, session: aiohttp.ClientSession, proxy: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession) -> None:
         self.session = session
-        self.proxy = proxy
 
     async def _handle_response(self, response: aiohttp.ClientResponse):
         """
@@ -77,199 +73,95 @@ class BinanceBaseApi:
     async def _aio_get(self, url, params):
         if params is None:
             params = {}
-        async with self.session.get(url, params=params, proxy=self.proxy) as resp:
+        async with self.session.get(url, params=params) as resp:
             return await self._handle_response(resp)
 
     async def _aio_post(self, url, params):
-        async with self.session.post(url, data=params, proxy=self.proxy) as resp:
+        async with self.session.post(url, data=params) as resp:
             return await self._handle_response(resp)
 
 
-class BinanceBaseMarketApi(ABC, BinanceBaseApi):
+class BinanceBaseMarketApi(BinanceBaseApi):
     WEIGHT_EFFICIENT_ONCE_CANDLES = 499
     MAX_MINUTE_WEIGHT = 2400
     MAX_ONCE_CANDLES = 1000
+    PREFIX: str
+    API_VER = 'v1'
 
-    @abstractmethod
-    async def aioreq_time_and_weight(self) -> Tuple[int, int]:
-        pass
-
-    @abstractmethod
-    async def aioreq_klines(self, **kwargs) -> list:
-        pass
-
-    @abstractmethod
-    async def aioreq_exchange_info(self) -> dict:
-        pass
-
-    async def aioreq_premium_index(self, **kwargs) -> list:
-        raise NotImplementedError
-
-
-class BinanceMarketUMFapi(BinanceBaseMarketApi):
-    """
-    Abstraction for binance USDⓈ-M Futures Fapi market endpoints
-    """
-
-    PREFIX = 'https://fapi.binance.com/fapi'
-    WEIGHT_EFFICIENT_ONCE_CANDLES = 499
-    MAX_MINUTE_WEIGHT = 2400
-    MAX_ONCE_CANDLES = 1500
-
-    async def aioreq_time_and_weight(self) -> Tuple[int, int]:
-        """
-        Get the current server time and consumed weight
-        """
-        url = f'{self.PREFIX}/v1/time'
-        async with self.session.get(url, proxy=self.proxy) as resp:
+    async def aioreq_time_and_weight(self) -> tuple[int, int]:
+        url = f'{self.PREFIX}/{self.API_VER}/time'
+        async with self.session.get(url) as resp:
             weight = int(resp.headers['X-MBX-USED-WEIGHT-1M'])
             timestamp = (await resp.json())['serverTime']
         return timestamp, weight
 
     async def aioreq_klines(self, **kwargs) -> list:
-        """
-        Get Kline/candlestick bars for a symbol.
-        Klines are uniquely identified by their open time.
-        """
-        url = f'{self.PREFIX}/v1/klines'
+        url = f'{self.PREFIX}/{self.API_VER}/klines'
         return await self._aio_get(url, kwargs)
 
     async def aioreq_exchange_info(self) -> dict:
-        """
-        Get current exchange trading rules and symbol information
-        """
-        url = f'{self.PREFIX}/v1/exchangeInfo'
+        url = f'{self.PREFIX}/{self.API_VER}/exchangeInfo'
         return await self._aio_get(url, None)
 
-    async def aioreq_list_tradifi_symbols(self) -> list:
-        """
-        Get all symbols
-        """
-        url = f'{self.PREFIX}/v1/exchangeInfo'
-        exchange_info = await self._aio_get(url, None)
-        symbols_info = pd.DataFrame(exchange_info['symbols']) # type: ignore
-        symbols_info['deliveryDate'] = pd.to_datetime(pd.to_numeric(symbols_info['deliveryDate']), unit='ms') # type: ignore
-        symbols_info['baseAsset1k'] = symbols_info['baseAsset'].str.replace('1000','')
-        symbols_info['baseAsset1k'] = symbols_info['baseAsset1k'].str.replace('SATS','1000SATS')
-        symbols_info = symbols_info.query("contractType == 'TRADIFI_PERPETUAL'") 
-        return symbols_info['symbol'].tolist()
-
     async def aioreq_premium_index(self, **kwargs) -> list:
-        """
-        Get Mark Price and Funding Rate
-        """
-        url = f'{self.PREFIX}/v1/premiumIndex'
+        url = f'{self.PREFIX}/{self.API_VER}/premiumIndex'
         return await self._aio_get(url, kwargs)
 
     async def aioreq_funding_rate(self, **kwargs):
-        """
-        Get Funding Rate History
-        """
-        url = f'{self.PREFIX}/v1/fundingRate'
+        url = f'{self.PREFIX}/{self.API_VER}/fundingRate'
         return await self._aio_get(url, kwargs)
 
+
+class BinanceMarketUMFapi(BinanceBaseMarketApi):
+    '''Binance USDⓈ-M Futures Fapi market endpoints'''
+
+    PREFIX = 'https://fapi.binance.com/fapi'
+    MAX_ONCE_CANDLES = 1500
+
+    async def aioreq_list_tradifi_symbols(self) -> list:
+        exchange_info = await self.aioreq_exchange_info()
+        symbols_info = pd.DataFrame(exchange_info['symbols'])  # type: ignore
+        symbols_info['deliveryDate'] = pd.to_datetime(pd.to_numeric(symbols_info['deliveryDate']), unit='ms')  # type: ignore
+        symbols_info['baseAsset1k'] = symbols_info['baseAsset'].str.replace('1000', '')
+        symbols_info['baseAsset1k'] = symbols_info['baseAsset1k'].str.replace('SATS', '1000SATS')
+        symbols_info = symbols_info.query("contractType == 'TRADIFI_PERPETUAL'")
+        return symbols_info['symbol'].tolist()
+
     async def aioreq_book_ticker(self, **kwargs):
-        """
-        Best price/qty on the order book for a symbol or symbols.
-        """
-        url = f'{self.PREFIX}/v1/ticker/bookTicker'
+        url = f'{self.PREFIX}/{self.API_VER}/ticker/bookTicker'
         return await self._aio_get(url, kwargs)
 
 
 class BinanceMarketCMDapi(BinanceBaseMarketApi):
-    """
-    Abstraction for Binance COIN-M Futures Dapi market endpoints
-    """
+    '''Binance COIN-M Futures Dapi market endpoints'''
 
     PREFIX = 'https://dapi.binance.com/dapi'
-    WEIGHT_EFFICIENT_ONCE_CANDLES = 499
-    MAX_MINUTE_WEIGHT = 2400
     MAX_ONCE_CANDLES = 1500
-
-    async def aioreq_time_and_weight(self) -> Tuple[int, int]:
-        """
-        Get the current server time and consumed weight
-        """
-        url = f'{self.PREFIX}/v1/time'
-        async with self.session.get(url, proxy=self.proxy) as resp:
-            weight = int(resp.headers['X-MBX-USED-WEIGHT-1M'])
-            timestamp = (await resp.json())['serverTime']
-        return timestamp, weight
-
-    async def aioreq_klines(self, **kwargs) -> list:
-        """
-        Get Kline/candlestick bars for a symbol.
-        Klines are uniquely identified by their open time.
-        """
-        url = f'{self.PREFIX}/v1/klines'
-        return await self._aio_get(url, kwargs)
-
-    async def aioreq_exchange_info(self) -> dict:
-        """
-        Get Current exchange trading rules and symbol information
-        """
-        url = f'{self.PREFIX}/v1/exchangeInfo'
-        return await self._aio_get(url, None)
-
-    async def aioreq_premium_index(self, **kwargs) -> list:
-        """
-        Get Mark Price and Funding Rate
-        """
-        url = f'{self.PREFIX}/v1/premiumIndex'
-        return await self._aio_get(url, kwargs)
-
-    async def aioreq_funding_rate(self, **kwargs):
-        """
-        Get Funding Rate History
-        """
-        url = f'{self.PREFIX}/v1/fundingRate'
-        return await self._aio_get(url, kwargs)
 
 
 class BinanceMarketSpotApi(BinanceBaseMarketApi):
-    """
-    Abstraction for Binance Spot Api market endpoints
-    """
+    '''Binance Spot Api market endpoints'''
 
     PREFIX = 'https://api.binance.com/api'
+    API_VER = 'v3'
     WEIGHT_EFFICIENT_ONCE_CANDLES = 1000
     MAX_MINUTE_WEIGHT = 6000
-    MAX_ONCE_CANDLES = 1000
 
-    async def aioreq_time_and_weight(self) -> Tuple[int, int]:
-        """
-        Get the current server time and consumed weight
-        """
-        url = f'{self.PREFIX}/v3/time'
-        async with self.session.get(url, proxy=self.proxy) as resp:
-            weight = int(resp.headers['X-MBX-USED-WEIGHT-1M'])
-            timestamp = (await resp.json())['serverTime']
-        return timestamp, weight
+    async def aioreq_premium_index(self, **kwargs) -> list:
+        raise NotImplementedError
 
-    async def aioreq_klines(self, **kwargs):
-        """
-        Get Kline/candlestick bars for a symbol.
-        Klines are uniquely identified by their open time.
-        """
-        url = f'{self.PREFIX}/v3/klines'
-        return await self._aio_get(url, kwargs)
-
-    async def aioreq_exchange_info(self):
-        """
-        Get Current exchange trading rules and symbol information
-        """
-        url = f'{self.PREFIX}/v3/exchangeInfo'
-        return await self._aio_get(url, None)
+    async def aioreq_funding_rate(self, **kwargs):
+        raise NotImplementedError
 
 
-def create_binance_market_api(trade_type: TradeType, session, http_proxy) -> BinanceBaseMarketApi:
+def create_binance_market_api(trade_type: TradeType, session) -> BinanceBaseMarketApi:
     match trade_type:
         case TradeType.spot:
-            return BinanceMarketSpotApi(session, http_proxy)
+            return BinanceMarketSpotApi(session)
         case TradeType.um_futures:
-            return BinanceMarketUMFapi(session, http_proxy)
+            return BinanceMarketUMFapi(session)
         case TradeType.cm_futures:
-            return BinanceMarketCMDapi(session, http_proxy)
+            return BinanceMarketCMDapi(session)
 
 
 def _get_from_filters(filters, filter_type, field_name):
@@ -328,9 +220,9 @@ class BinanceFetcher:
         TradeType.spot: _parse_spot_syminfo,
     }
 
-    def __init__(self, trade_type: TradeType, session: aiohttp.ClientSession, http_proxy=None):
+    def __init__(self, trade_type: TradeType, session: aiohttp.ClientSession):
         self.trade_type = trade_type
-        self.market_api = create_binance_market_api(trade_type, session, http_proxy)
+        self.market_api = create_binance_market_api(trade_type, session)
 
         if trade_type in self.TYPE_MAP:
             self.syminfo_parse_func = self.TYPE_MAP[trade_type]
@@ -355,10 +247,8 @@ class BinanceFetcher:
             results[info['symbol']] = self.syminfo_parse_func(info)
         return results
 
-    async def get_kline_df(self, symbol, interval, **kwargs) -> Optional[pl.DataFrame]:
-        '''
-        Request and parse return values of /klines API and convert to polars.DataFrame
-        '''
+    async def get_kline_df(self, symbol, interval, **kwargs) -> pl.DataFrame | None:
+        '''Request /klines and convert to polars.DataFrame'''
         klines = await async_retry_getter(self.market_api.aioreq_klines, symbol=symbol, interval=interval, **kwargs)
         if klines is None:
             return None
@@ -384,13 +274,10 @@ class BinanceFetcher:
         lf = lf.with_columns(pl.col('candle_begin_time').cast(pl.Datetime('ms')).dt.replace_time_zone('UTC'))
         lf = lf.unique('candle_begin_time', keep='last')
         lf = lf.sort('candle_begin_time')
-        df = lf.collect()
-        return df
+        return lf.collect()
 
-    async def get_kline_df_of_day(self, symbol, interval, dt) -> Optional[pl.DataFrame]:
-        '''
-        Request and parse return values of /klines API of given date and convert to polars.DataFrame
-        '''
+    async def get_kline_df_of_day(self, symbol, interval, dt) -> pl.DataFrame | None:
+        '''Request /klines for a given date and convert to polars.DataFrame'''
         if isinstance(dt, str):
             dt = date_parser.parse(dt).date()
         ts_start = datetime.combine(dt, dtime(0, 0), tzinfo=ZoneInfo('UTC'))
@@ -418,9 +305,7 @@ class BinanceFetcher:
         lf = lf.unique('candle_begin_time', keep='last')
         lf = lf.filter(pl.col('candle_begin_time').is_between(ts_start, ts_next, 'left'))
         lf = lf.sort('candle_begin_time')
-        df = lf.collect()
-        
-        return df
+        return lf.collect()
 
     async def get_realtime_funding_rate(self) -> pl.DataFrame:
         if self.trade_type == TradeType.spot:
@@ -441,10 +326,8 @@ class BinanceFetcher:
         return df.collect()
 
     async def get_hist_funding_rate(self, symbol, **kwargs):
-        '''
-        Parse historical funding rates from /fundingRate
-        '''
-        if self.trade_type == 'spot':
+        '''Parse historical funding rates from /fundingRate'''
+        if self.trade_type == TradeType.spot:
             raise RuntimeError('Cannot request funding rate for spot')
 
         # Wait for 75s after a failure because the rate limit is 500/5mins
@@ -466,160 +349,89 @@ class BinanceFetcher:
         return df.collect()
 
 
-async def download_funding_for_symbol(funding_dir: Path, symbol: str, fetcher: BinanceFetcher):
-    df_funding = await fetcher.get_hist_funding_rate(symbol=symbol, limit=1000)
+async def download_funding_rates(trade_type: TradeType, symbols: list[str]):
+    logger.debug(f'Start Download {trade_type.value} {symbols[0]} -- {symbols[-1]} Funding Rates from Binance API')
 
-    output_file = funding_dir / f"{symbol}.pqt"
-    df_funding.write_parquet(output_file)
-
-
-async def download_funding_rates(trade_type: TradeType, symbols: list[str], http_proxy: Optional[str]):
-    logger.debug(f"Start Download {trade_type.value} {symbols[0]} -- {symbols[-1]} Funding Rates from Binance API")
-
-    funding_dir = BINANCE_DATA_DIR / "api_data" / trade_type.value / "funding_rate"
+    funding_dir = BINANCE_DATA_DIR / 'api_data' / trade_type.value / 'funding_rate'
     funding_dir.mkdir(parents=True, exist_ok=True)
-
-    logger.debug(f"Funding rate directory: {funding_dir}")
-
-    if http_proxy is not None:
-        logger.debug(f"Use proxy, http_proxy={http_proxy}")
+    logger.debug(f'Funding rate directory: {funding_dir}')
 
     async with create_aiohttp_session(HTTP_TIMEOUT_SEC) as session:
-        fetcher = BinanceFetcher(trade_type, session, http_proxy)
-        tasks = [download_funding_for_symbol(funding_dir, symbol, fetcher) for symbol in symbols]
-        await asyncio.gather(*tasks)
+        fetcher = BinanceFetcher(trade_type, session)
+        dfs = await asyncio.gather(*[fetcher.get_hist_funding_rate(symbol=symbol, limit=1000) for symbol in symbols])
+        for symbol, df_funding in zip(symbols, dfs):
+            df_funding.write_parquet(funding_dir / f'{symbol}.pqt')
 
-    logger.debug(f"{trade_type.value} {symbols[0]} -- {symbols[-1]} API Funding Rates download successfully")
+    logger.debug(f'{trade_type.value} {symbols[0]} -- {symbols[-1]} API Funding Rates download successfully')
 
-
-async def download_funding_rates_all(trade_type: TradeType, http_proxy: Optional[str]):
-    logger.info(f"BHDS Recent {trade_type.value} Funding Rates API Download")
-    symbols = local_list_kline_symbols(trade_type, "1m")
-    await download_funding_rates(trade_type, symbols, http_proxy)
-
-
-async def _get_kline(fetcher: BinanceFetcher, symbol: str, time_interval: str, dt: str):
-    df = await fetcher.get_kline_df_of_day(symbol, time_interval, dt)
-    return df, symbol, dt
+async def download_funding_rates_all(trade_type: TradeType):
+    logger.info(f'BHDS Recent {trade_type.value} Funding Rates API Download')
+    symbols = local_list_kline_symbols(trade_type, '1m')
+    await download_funding_rates(trade_type, symbols)
 
 
-async def api_download_kline(
-    trade_type: TradeType,
-    time_interval: str,
-    sym_dts: list[tuple[str, str]],
-    http_proxy: Optional[str],
-):
+async def api_download_kline(trade_type: TradeType, time_interval: str, sym_dts: list[tuple[str, str]]):
     BATCH_SIZE = 40
 
-    logger.debug(f"Start Download {trade_type.value} {time_interval} {len(sym_dts)} Klines from Binance API")
-    if http_proxy is not None:
-        logger.debug(f"Use proxy, http_proxy={http_proxy}")
+    logger.debug(f'Start Download {trade_type.value} {time_interval} {len(sym_dts)} Klines from Binance API')
     sym_dts = sorted([(sym, convert_date(dt)) for sym, dt in sym_dts])  # type: ignore
 
     async with create_aiohttp_session(HTTP_TIMEOUT_SEC) as session:
-        fetcher = BinanceFetcher(trade_type, session, http_proxy)
+        fetcher = BinanceFetcher(trade_type, session)
         while sym_dts:
             server_ts, weight = await fetcher.get_time_and_weight()
             batch, sym_dts = sym_dts[:BATCH_SIZE], sym_dts[BATCH_SIZE:]
-            logger.debug(f"server_time={server_ts}, weight_used={weight}, start={batch[0]}, end={batch[-1]}")
+            logger.debug(f'server_time={server_ts}, weight_used={weight}, start={batch[0]}, end={batch[-1]}')
 
             max_minute_weight, _ = fetcher.get_api_limits()
             if weight > max_minute_weight - 480:
-                logger.info(f"Weight {weight} exceeds the maximum limit, sleep until next minute")
-                await async_sleep_until_run_time(next_run_time("1m"))
+                logger.info(f'Weight {weight} exceeds the maximum limit, sleep until next minute')
+                await async_sleep_until_run_time(next_run_time('1m'))
                 continue
 
-            tasks = [asyncio.create_task(_get_kline(fetcher, sym, time_interval, dt)) for sym, dt in batch]
-
-            for task in asyncio.as_completed(tasks):
-                df, symbol, dt = await task
+            results = await asyncio.gather(*[fetcher.get_kline_df_of_day(sym, time_interval, dt) for sym, dt in batch])
+            for (symbol, dt), df in zip(batch, results):
                 if df is None:
                     continue
-                filename = dt.strftime("%Y%m%d") + ".pqt" # type: ignore
-                kline_dir = BINANCE_DATA_DIR / "api_data" / trade_type.value / "klines" / symbol / time_interval
+                filename = dt.strftime('%Y%m%d') + '.pqt'  # type: ignore
+                kline_dir = BINANCE_DATA_DIR / 'api_data' / trade_type.value / 'klines' / symbol / time_interval
                 kline_dir.mkdir(parents=True, exist_ok=True)
-                output_file = kline_dir / filename
-                df.write_parquet(output_file)
+                df.write_parquet(kline_dir / filename)
 
-    logger.debug(f"{trade_type.value} {time_interval} API klines download successfully")
-
-
-def _get_missing_kline_dates_for_symbol(
-    trade_type: TradeType,
-    symbol: str,
-    time_interval: str,
-    overwrite: bool,
-) -> list[str]:
-    """Get missing kline dates for a single symbol.
-    
-    Args:
-        trade_type: Type of trade (spot or futures)
-        symbol: Trading symbol
-        time_interval: Time interval for klines
-        overwrite: Whether to overwrite existing files
-        
-    Returns:
-        List of dates with missing kline data
-    """
-    parsed_kline_dir = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "klines"
-    parsed_symbol_kline_dir = parsed_kline_dir / symbol / time_interval
-    ts_mgr = TSManager(parsed_symbol_kline_dir)
-    df_cnt = ts_mgr.get_row_count_per_date(exclude_empty=False)
-    expected_num = timedelta(days=1) // convert_interval_to_timedelta(time_interval)
-
-    if df_cnt is None:
-        return []
-
-    df_missing = df_cnt.filter(pl.col("row_count") < expected_num)
-    dts = set(df_missing["dt"])
-
-    if not overwrite:
-        api_kline_dir = BINANCE_DATA_DIR / "api_data" / trade_type.value / "klines" / symbol / time_interval
-        kline_files = api_kline_dir.glob("*.pqt")
-        dts_exist = {convert_date(f.stem) for f in kline_files}
-        dts -= dts_exist
-
-    return sorted(dts)
+    logger.debug(f'{trade_type.value} {time_interval} API klines download successfully')
 
 
-async def download_missing_kline_symbols(
-    trade_type: TradeType,
-    symbols: list[str],
-    time_interval: str,
-    overwrite: bool,
-    http_proxy: Optional[str],
-):
-    """Download missing kline data for multiple symbols.
-    
-    Args:
-        trade_type: Type of trade (spot or futures)
-        symbols: List of trading symbols
-        time_interval: Time interval for klines
-        overwrite: Whether to overwrite existing files
-        http_proxy: HTTP proxy to use
-        
-    """
-    sym_dts = []
-    now = datetime.now()
-    with tqdm(total=len(symbols), ncols=100, desc=f"\033[92m{now.strftime('%H:%M:%S')}\033[0m | Missing Klines |", colour="green") as pbar:
-        for symbol in symbols:
-            missing_dates = _get_missing_kline_dates_for_symbol(trade_type, symbol, time_interval, overwrite)
-            sym_dts.extend((symbol, dt) for dt in missing_dates)
-            pbar.update(1) 
-
-    if sym_dts:
-        await api_download_kline(trade_type, time_interval, sym_dts, http_proxy)
-
-
-async def download_missing_kline_type(
-    trade_type: TradeType,
-    time_interval: str,
-    overwrite: bool,
-    http_proxy: Optional[str],
-):
-    logger.info(f"BHDS Download missing {trade_type.value} {time_interval} klines from API")
+async def download_missing_kline_type(trade_type: TradeType, time_interval: str, overwrite: bool):
+    logger.info(f'BHDS Download missing {trade_type.value} {time_interval} klines from API')
 
     symbols = local_list_kline_symbols(trade_type, time_interval)
-    await download_missing_kline_symbols(trade_type, symbols, time_interval, overwrite, http_proxy)
-    
-    logger.debug("All missings downloaded")
+    expected_num = timedelta(days=1) // convert_interval_to_timedelta(time_interval)
+    parsed_kline_dir = BINANCE_DATA_DIR / 'parsed_data' / trade_type.value / 'klines'
+
+    # ================================================
+    # 1. 收集各 symbol 缺失日期
+    # ================================================
+    sym_dts = []
+    now = datetime.now()
+    with tqdm(total=len(symbols), ncols=100, desc=f'\033[92m{now.strftime("%H:%M:%S")}\033[0m | Missing Klines |', colour='green') as pbar:
+        for symbol in symbols:
+            ts_mgr = TSManager(parsed_kline_dir / symbol / time_interval)
+            df_cnt = ts_mgr.get_row_count_per_date(exclude_empty=False)
+            if df_cnt is None:
+                pbar.update(1)
+                continue
+
+            dts = set(df_cnt.filter(pl.col('row_count') < expected_num)['dt'])
+            if not overwrite:
+                api_kline_dir = BINANCE_DATA_DIR / 'api_data' / trade_type.value / 'klines' / symbol / time_interval
+                dts -= {convert_date(f.stem) for f in api_kline_dir.glob('*.pqt')}
+            sym_dts.extend((symbol, dt) for dt in sorted(dts))
+            pbar.update(1)
+
+    # ================================================
+    # 2. 下载缺失 K 线
+    # ================================================
+    if sym_dts:
+        await api_download_kline(trade_type, time_interval, sym_dts)
+
+    logger.debug('All missings downloaded')

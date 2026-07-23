@@ -10,9 +10,9 @@ from zipfile import ZipFile
 import polars as pl
 from tqdm import tqdm
 
-from aws.checksum import get_verified_aws_data_files
-from aws.client_async import AwsKlineClient
-from aws.kline.util import local_list_kline_symbols
+from aws.download.checksum import get_verified_aws_data_files
+from aws.download.client import AwsClient
+from aws.download.util import local_list_kline_symbols
 from config import BINANCE_DATA_DIR, N_JOBS, DataFrequency, TradeType
 from util.concurrent import mp_env_init
 from util.log_kit import logger
@@ -103,7 +103,7 @@ def run_parse_symbol_kline(aws_symbol_kline_dir: Path, parsed_symbol_kline_dir: 
 def parse_klines(trade_type: TradeType, time_interval: str, symbols: list[str], force_update: bool):
     logger.debug(f"trade_type={trade_type.value}, time_interval={time_interval}, num_symbols={len(symbols)}, n_jobs={N_JOBS}")
 
-    aws_local_kline_dir = AwsKlineClient.LOCAL_DIR / AwsKlineClient.get_base_dir(trade_type, DataFrequency.daily)
+    aws_local_kline_dir = AwsClient.LOCAL_DIR / AwsClient.get_base_dir(trade_type, 'klines', DataFrequency.daily)
     parsed_kline_dir = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "klines"
 
     thres = timedelta(days=1) // convert_interval_to_timedelta(time_interval)

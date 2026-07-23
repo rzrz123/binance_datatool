@@ -6,20 +6,18 @@
 
 ## 1. 输入与输出
 
-| 交易所 | 输入 | 输出 |
-|--------|------|------|
-| **Binance** | `parsed_data/{type}/klines/{symbol}/{interval}/` + `api_data/{type}/klines/` | `results_data/{type}/{interval}/{symbol}.pqt` |
-| **Binance** (funding) | `parsed_data/{type}/funding/` + `api_data/{type}/funding_rate/` | 同上（join 到 kline） |
-| **Bybit** | `bybit_data/linear/klines/{symbol}/{interval}/` | `bybit_data/results_data/linear/{interval}/` |
-| **OKX** | `okx_data/swap/klines/{interval}/{symbol}.pqt` | `okx_data/results_data/swap/{interval}/` |
+| 输入 | 输出 |
+|------|------|
+| `parsed_data/{type}/klines/{symbol}/{interval}/` + `api_data/{type}/klines/` | `results_data/{type}/{interval}/{symbol}.pqt` |
+| Funding: `parsed_data/{type}/funding/` + `api_data/{type}/funding_rate/` | 同上（join 到 kline） |
 
 ---
 
 ## 2. 主流程：`gen_kline` → `gen_kline_type`
 
 ```
-gen_kline_type(exchange, trade_type, time_interval, ...)
-  → 获取 symbol 列表（按交易所不同来源）
+gen_kline_type(trade_type, time_interval, ...)
+  → 获取 symbol 列表
   → 清空 results_dir
   → 多进程：每个 symbol 调用 gen_kline()
 ```
@@ -27,7 +25,7 @@ gen_kline_type(exchange, trade_type, time_interval, ...)
 ### 单 Symbol 流程：`gen_kline`
 
 ```
-1. 读取 kline 数据（按 exchange 选择路径）
+1. 读取 kline 数据（merge parsed + api）
 2. [可选] 计算 VWAP：quote_volume / volume → avg_price_{interval}
 3. [可选] 合并 funding：join funding_rate，无则填 0
 4. [可选] split_gaps：检测 gap → 按 gap 切分 → 生成 SP0_xxx, SP1_xxx, ... 或保留原名
@@ -39,14 +37,14 @@ gen_kline_type(exchange, trade_type, time_interval, ...)
 
 ## 3. 核心函数
 
-### 3.1 `merge_klines`（Binance）
+### 3.1 `merge_klines`
 
 - 读 `parsed_data`（TSManager.read_all）
 - 读 `api_data` 下 `*.pqt`
 - `concat` → `unique(candle_begin_time, keep="last")` → `sort`
 - `exclude_empty=True` 时过滤 `volume > 0`
 
-### 3.2 `merge_funding_rates`（Binance）
+### 3.2 `merge_funding_rates`
 
 - 读 `parsed_data/.../funding/{symbol}.pqt`
 - 读 `api_data/.../funding_rate/{symbol}.pqt`
@@ -75,7 +73,7 @@ gen_kline_type(exchange, trade_type, time_interval, ...)
 - 缺失行：`close` forward fill，`open/high/low` 用 `close`，`volume/quote_volume` 填 0
 - 有 `avg_price_1m`：forward fill，clip 到 [low, high]
 - 有 `funding_rate`：填 0
-- Binance 额外：`trade_num`, `taker_buy_*` 填 0
+- `trade_num`, `taker_buy_*` 填 0
 
 ---
 
@@ -94,8 +92,8 @@ gen_kline_type(exchange, trade_type, time_interval, ...)
 ## 5. 依赖关系
 
 ```
-aws.kline.util.local_list_kline_symbols  → Binance symbol 列表
-config.BINANCE_DATA_DIR, BYBIT_DATA_DIR, OKX_DATA_DIR
+aws.download.util.local_list_kline_symbols  → symbol 列表
+config.BINANCE_DATA_DIR
 util.ts_manager.TSManager
 util.time.convert_interval_to_timedelta
 ```

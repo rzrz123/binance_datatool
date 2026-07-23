@@ -104,13 +104,13 @@ aws_symbol_funding_dir/   (如 BTCUSDT/)
 ## 5. 依赖关系
 
 ```
-aws/checksum.get_verified_aws_data_files  → 只解析已校验的 zip
-aws/client_async.AwsKlineClient           → 路径结构 (LOCAL_DIR, get_base_dir)
-aws/kline.util.local_list_kline_symbols   → 扫描 aws_data 得到 symbol 列表
-aws/funding.util.local_list_funding_symbols
-util/ts_manager.TSManager                 → 分区读写、update_partition
-util/time.convert_interval_to_timedelta   → 计算 thres (1m→1440)
-config.BINANCE_DATA_DIR                   → 根目录
+aws/download/checksum.get_verified_aws_data_files  → 只解析已校验的 zip
+aws/download/client.AwsClient                      → 路径结构 (LOCAL_DIR, get_base_dir)
+aws/download/util.local_list_kline_symbols          → 扫描 aws_data 得到 symbol 列表
+aws/download/util.local_list_funding_symbols
+util/ts_manager.TSManager                          → 分区读写、update_partition
+util/time.convert_interval_to_timedelta            → 计算 thres (1m→1440)
+config.BINANCE_DATA_DIR                            → 根目录
 ```
 
 ---
@@ -127,10 +127,10 @@ config.BINANCE_DATA_DIR                   → 根目录
 
 | 功能 | 文件 |
 |------|------|
-| Kline 解析入口 | `aws/kline/parse.py` → `parse_all_klines` |
-| Kline 单文件读取 | `aws/kline/parse.py` → `read_kline_csv` |
-| Kline 单 symbol 逻辑 | `aws/kline/parse.py` → `run_parse_symbol_kline` |
-| Funding 解析入口 | `aws/funding/parse.py` → `parse_funding_rates_all` |
-| Funding 单文件读取 | `aws/funding/parse.py` → `read_funding_csv` |
-| 已校验文件筛选 | `aws/checksum.py` → `get_verified_aws_data_files` |
+| Kline 解析入口 | `aws/parse/kline.py` → `parse_all_klines` |
+| Kline 单文件读取 | `aws/parse/kline.py` → `read_kline_csv` |
+| Kline 单 symbol 逻辑 | `aws/parse/kline.py` → `run_parse_symbol_kline` |
+| Funding 解析入口 | `aws/parse/funding.py` → `parse_funding_rates_all` |
+| Funding 单文件读取 | `aws/parse/funding.py` → `read_funding_csv` |
+| 已校验文件筛选 | `aws/download/checksum.py` → `get_verified_aws_data_files` |
 | 分区管理 | `util/ts_manager.py` → `TSManager` |

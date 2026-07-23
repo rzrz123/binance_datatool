@@ -17,7 +17,7 @@
 ## 2. 主流程
 
 ```
-resample_kline_all(exchange, trade_type, resample_interval)
+resample_kline_all(trade_type, resample_interval)
   → 获取 1m 目录下所有 symbol
   → 删除已有 resample 目录
   → 多进程：每个 symbol 调用 resample_kline()
@@ -49,16 +49,11 @@ resample_kline_all(exchange, trade_type, resample_interval)
 | close | last |
 | volume | sum |
 | quote_volume | sum |
-
-### 3.2 Binance 额外列
-
-| 列 | 聚合规则 |
-|----|----------|
 | trade_num | sum |
 | taker_buy_base_asset_volume | sum |
 | taker_buy_quote_asset_volume | sum |
 
-### 3.3 可选列
+### 3.2 可选列
 
 | 列 | 聚合规则 |
 |----|----------|
@@ -70,7 +65,7 @@ resample_kline_all(exchange, trade_type, resample_interval)
 
 funding 若窗口内无有效值，填 0。
 
-### 3.4 `resample_interval` 格式
+### 3.3 `resample_interval` 格式
 
 Polars `every` 支持：`"1h"`, `"4h"`, `"30m"` 等，与 `convert_interval_to_timedelta` 兼容。
 
@@ -88,8 +83,8 @@ Polars `every` 支持：`"1h"`, `"4h"`, `"30m"` 等，与 `convert_interval_to_t
 ## 5. CLI 用法
 
 ```bash
-python datalake.py generate resample-type binance spot 1h
-python datalake.py generate resample-type binance um_futures 1h
+python datalake.py generate resample-type spot 1h
+python datalake.py generate resample-type um_futures 1h
 ```
 
 ---
@@ -97,7 +92,7 @@ python datalake.py generate resample-type binance um_futures 1h
 ## 6. 依赖关系
 
 ```
-config.BINANCE_DATA_DIR, BYBIT_DATA_DIR, OKX_DATA_DIR
+config.BINANCE_DATA_DIR
 util.concurrent.mp_env_init
 ```
 

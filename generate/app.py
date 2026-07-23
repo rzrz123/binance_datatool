@@ -1,7 +1,7 @@
 import typer
 from typing_extensions import Annotated
 
-from config import ExchangeType, TradeType
+from config import TradeType
 
 from .kline import gen_kline_type
 from .resample import resample_kline_all
@@ -11,7 +11,6 @@ app = typer.Typer()
 
 @app.command()
 def kline_type(
-    exchange: Annotated[ExchangeType, typer.Argument(help="Exchange (binance/bybit)")],
     trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
     time_interval: Annotated[str, typer.Argument(help="K-line time interval, e.g., '1m', '5m', '1h'")],
     split_gaps: Annotated[bool, typer.Option(help="Whether to split data by gaps")] = False,
@@ -26,7 +25,6 @@ def kline_type(
     Refer to kline command for more details.
     """
     gen_kline_type(
-        exchange=exchange,
         trade_type=trade_type,
         time_interval=time_interval,
         split_gaps=split_gaps,
@@ -39,7 +37,6 @@ def kline_type(
 
 @app.command()
 def resample_type(
-    exchange: Annotated[ExchangeType, typer.Argument(help="Exchange (binance/bybit)")],
     trade_type: Annotated[TradeType, typer.Argument(help="Type of trading (spot/futures)")],
     resample_interval: Annotated[str, typer.Argument(help="Resample interval, e.g., '1h', '4h'")],
     base_offset: Annotated[str, typer.Argument(help="Base offset, e.g., '5m', '15m', '30m'")],
@@ -47,4 +44,4 @@ def resample_type(
     """
     Resample kline data for all symbols of given trade type and resample interval.
     """
-    resample_kline_all(exchange=exchange, trade_type=trade_type, resample_interval=resample_interval, base_offset=base_offset)
+    resample_kline_all(trade_type=trade_type, resample_interval=resample_interval, base_offset=base_offset)

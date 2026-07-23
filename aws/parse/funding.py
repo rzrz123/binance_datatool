@@ -5,8 +5,8 @@ from zipfile import ZipFile
 
 import polars as pl
 
-from aws.client_async import AwsFundingRateClient
-from aws.funding.util import local_list_funding_symbols
+from aws.download.client import AwsClient
+from aws.download.util import local_list_funding_symbols
 from config import BINANCE_DATA_DIR, N_JOBS, DataFrequency, TradeType
 from util.concurrent import mp_env_init
 from util.log_kit import logger
@@ -86,8 +86,8 @@ def parse_funding_rates(trade_type: TradeType, symbols: list[str]):
     """
     logger.debug("Start parsing funding rates")
 
-    aws_local_funding_dir = AwsFundingRateClient.LOCAL_DIR / AwsFundingRateClient.get_base_dir(
-        trade_type, DataFrequency.monthly
+    aws_local_funding_dir = AwsClient.LOCAL_DIR / AwsClient.get_base_dir(
+        trade_type, 'fundingRate', DataFrequency.monthly
     )
 
     parsed_funding_dir = BINANCE_DATA_DIR / "parsed_data" / trade_type.value / "funding"
