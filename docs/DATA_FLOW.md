@@ -28,7 +28,7 @@ util/      → 日志、时间、分区存储、symbol 过滤
 | 来源 | 数据类型 | 格式 |
 |------|----------|------|
 | **Binance AWS S3** | K 线（日 zip）、Funding（月 zip） | CSV in zip |
-| **Binance REST API** | K 线、Funding | JSON |
+| **Binance REST API** | Funding (补当月) | JSON |
 
 ---
 
@@ -37,7 +37,7 @@ util/      → 日志、时间、分区存储、symbol 过滤
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  DOWNLOAD   │ ──► │   VERIFY    │ ──► │    PARSE    │ ──► │  API FILL   │ ──► │   GENERATE  │ ──► │  RESAMPLE   │
-│  (aria2c)   │     │  (SHA256)   │     │ (zip→pqt)   │     │ (可选补全)   │     │ (merge+VWAP) │     │  (1m→1h)    │
+│  (aria2c)   │     │  (SHA256)   │     │ (zip→pqt)   │     │  (funding)  │     │ (merge+VWAP) │     │  (1m→1h)    │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
       │                    │                    │                    │                    │                    │
       ▼                    ▼                    ▼                    ▼                    ▼                    ▼
@@ -51,8 +51,8 @@ util/      → 日志、时间、分区存储、symbol 过滤
 |------|------|------|
 | **Download** | `aws_download {spot,um,cm}-klines` / `aws_download {um,cm}-funding` | `aws_data/` 下 zip + CHECKSUM，并 SHA256 校验生成 `.verified` |
 | **Parse** | `aws_parse klines` / `aws_parse funding` | zip → Polars → parquet，按 TSManager 分区 |
-| **API Fill** | `api_data download-recent-funding-type` 等 | 补全近期 funding、缺失 kline |
-| **Generate** | `generate kline-type` | 合并 parsed + api，加 VWAP、funding，gap 处理 |
+| **API Fill** | `api_data download-recent-funding-type` | AWS funding 按月发布, 用 API 补当前月 |
+| **Generate** | `generate kline-type` | 读 parsed kline, 加 VWAP, 合并当月 funding, gap 处理 |
 | **Resample** | `generate resample-type` | 1m → 1h 聚合 |
 
 ---
@@ -66,8 +66,8 @@ util/      → 日志、时间、分区存储、symbol 过滤
     │   └── data/{spot|futures/um|futures/cm}/{daily|monthly}/{klines|fundingRate}/
     ├── parsed_data/        # 解析后
     │   └── {spot|um_futures|cm_futures}/{klines|funding}/
-    ├── api_data/           # API 补全
-    │   └── {trade_type}/{klines|funding_rate}/
+    ├── api_data/           # API 补当月 funding
+    │   └── {trade_type}/funding_rate/
     └── results_data/       # 最终结果
         └── {trade_type}/{1m|1h}/
 ```
@@ -82,14 +82,14 @@ util/      → 日志、时间、分区存储、symbol 过滤
 ```
 Spot:
   aws_download spot-klines → aws_parse klines
-  → generate kline (--split-gaps --with-vwap --no-with-funding-rates)
+  → generate kline (--split-gaps)
   → resample 1h
 
 UM Futures:
   aws_download um-funding → aws_parse funding
-  → api_data download-recent-funding
+  → api_data download-recent-funding-type
   aws_download um-klines → aws_parse klines
-  → generate kline (--with-funding-rates)
+  → generate kline (--split-gaps)
   → resample 1h
 ```
 
@@ -101,7 +101,7 @@ UM Futures:
 datalake.py
 ├── aws_download → download + verify
 ├── aws_parse    → funding / klines parse
-├── api_data     → Binance API 补全
+├── api_data     → 补当月 funding
 └── generate     → kline 合并、resample
 
 依赖:

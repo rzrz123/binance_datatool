@@ -44,7 +44,7 @@ def resample_kline(trade_type: TradeType, symbol: str, resample_interval: str, b
         agg.append(pl.col('avg_price_1m').first())
 
     if 'funding_rate' in columns:
-        has_funding_cond = pl.col('funding_rate').abs() > 1e-6
+        has_funding_cond = pl.col('funding_rate').abs() != 0
         agg.extend([
             pl.col('funding_rate').filter(has_funding_cond).first().alias('funding_rate'),
             pl.col('candle_begin_time').filter(has_funding_cond).first().alias('funding_time'),

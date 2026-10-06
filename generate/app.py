@@ -16,13 +16,10 @@ def kline_type(
     split_gaps: Annotated[bool, typer.Option(help="Whether to split data by gaps")] = False,
     min_days: Annotated[int, typer.Option(help="Minimum gap days threshold")] = 1,
     min_price_chg: Annotated[float, typer.Option(help="Minimum price change ratio threshold")] = 0.1,
-    with_vwap: Annotated[bool, typer.Option(help="Whether to calculate VWAP")] = True,
-    with_funding_rates: Annotated[bool, typer.Option(help="Whether to include funding rates")] = False,
 ):
     """
-    Merge AWS and API kline data for all symbols of given trade type and time interval.
-
-    Refer to kline command for more details.
+    Build klines from parsed AWS data for all symbols of a trade type and interval.
+    VWAP is always written. Spot has no funding. UM and CM always merge the monthly AWS file with the API fill for the open month.
     """
     gen_kline_type(
         trade_type=trade_type,
@@ -30,8 +27,6 @@ def kline_type(
         split_gaps=split_gaps,
         min_days=min_days,
         min_price_chg=min_price_chg,
-        with_vwap=with_vwap,
-        with_funding_rates=with_funding_rates,
     )
 
 

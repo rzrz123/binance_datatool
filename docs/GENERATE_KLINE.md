@@ -1,6 +1,6 @@
 # Generate Kline 详解
 
-> 合并 parsed + api 数据，加 VWAP/funding，做 gap 检测与填充，输出最终 1m kline
+> 读 parsed kline, 加 VWAP/funding, 做 gap 检测与填充, 输出最终 1m kline
 
 ---
 
@@ -8,7 +8,7 @@
 
 | 输入 | 输出 |
 |------|------|
-| `parsed_data/{type}/klines/{symbol}/{interval}/` + `api_data/{type}/klines/` | `results_data/{type}/{interval}/{symbol}.pqt` |
+| `parsed_data/{type}/klines/{symbol}/{interval}/` | `results_data/{type}/{interval}/{symbol}.pqt` |
 | Funding: `parsed_data/{type}/funding/` + `api_data/{type}/funding_rate/` | 同上（join 到 kline） |
 
 ---
@@ -25,9 +25,9 @@ gen_kline_type(trade_type, time_interval, ...)
 ### 单 Symbol 流程：`gen_kline`
 
 ```
-1. 读取 kline 数据（merge parsed + api）
-2. [可选] 计算 VWAP：quote_volume / volume → avg_price_{interval}
-3. [可选] 合并 funding：join funding_rate，无则填 0
+1. 读取 parsed kline
+2. 计算 VWAP: quote_volume / volume → avg_price_{interval}
+3. UM/CM 合并 funding: join funding_rate, 无则填 0. Spot 跳过
 4. [可选] split_gaps：检测 gap → 按 gap 切分 → 生成 SP0_xxx, SP1_xxx, ... 或保留原名
 5. fill_kline_gaps：补全缺失时间戳
 6. 加 symbol 列，写入 parquet
@@ -39,10 +39,9 @@ gen_kline_type(trade_type, time_interval, ...)
 
 ### 3.1 `merge_klines`
 
-- 读 `parsed_data`（TSManager.read_all）
-- 读 `api_data` 下 `*.pqt`
-- `concat` → `unique(candle_begin_time, keep="last")` → `sort`
+- 读 `parsed_data` (TSManager.read_all)
 - `exclude_empty=True` 时过滤 `volume > 0`
+- K 线不从 REST API 补. API 只补当月 funding
 
 ### 3.2 `merge_funding_rates`
 
@@ -84,8 +83,8 @@ gen_kline_type(trade_type, time_interval, ...)
 | `split_gaps` | False | 是否按 gap 切分 |
 | `min_days` | 1 | gap 最小天数 |
 | `min_price_chg` | 0.1 | gap 最小价格变化比例 |
-| `with_vwap` | True | 是否计算 VWAP |
-| `with_funding_rates` | False | 是否合并 funding（仅 futures） |
+
+VWAP (`avg_price_{interval}`) 一定写入. Spot 不写 funding. `um_futures` 和 `cm_futures` 一定合并 funding.
 
 ---
 

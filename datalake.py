@@ -21,7 +21,7 @@ app.add_typer(
 app.add_typer(
     api_data,
     name='api_data',
-    help='Commands for maintaining Binance API data.',
+    help='Fill the open month of funding rates from the Binance API.',
 )
 app.add_typer(
     generate,

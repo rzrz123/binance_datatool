@@ -101,7 +101,7 @@ def fill_kline_gaps(df: pl.DataFrame, time_interval: str) -> pl.DataFrame:
 
 
 def merge_klines(trade_type: TradeType, symbol: str, time_interval: str, exclude_empty: bool) -> pl.DataFrame:
-    '''Merge AWS parsed klines with API klines; API rows win on duplicate timestamps'''
+    '''Read AWS parsed klines. Klines are daily on S3, so they are not filled from the REST API.'''
     parsed_symbol_kline_dir = BINANCE_DATA_DIR / 'parsed_data' / trade_type.value / 'klines' / symbol / time_interval
     aws_df = TSManager(parsed_symbol_kline_dir).read_all()
     if aws_df is None or aws_df.is_empty():
@@ -109,17 +109,7 @@ def merge_klines(trade_type: TradeType, symbol: str, time_interval: str, exclude
 
     if exclude_empty:
         aws_df = aws_df.filter(pl.col('volume') > 0)
-
-    api_kline_dir = BINANCE_DATA_DIR / 'api_data' / trade_type.value / 'klines' / symbol / time_interval
-    api_files = list(api_kline_dir.glob('*.pqt'))
-    if not api_files:
-        return aws_df
-
-    api_df = pl.read_parquet(api_files, columns=aws_df.columns)
-    if exclude_empty:
-        api_df = api_df.filter(pl.col('volume') > 0)
-
-    return pl.concat([aws_df, api_df]).unique(subset=['candle_begin_time'], keep='last').sort('candle_begin_time')
+    return aws_df
 
 
 def merge_funding_rates(trade_type: TradeType, symbol: str) -> pl.DataFrame:
@@ -135,11 +125,12 @@ def merge_funding_rates(trade_type: TradeType, symbol: str) -> pl.DataFrame:
     if not dfs:
         return pl.DataFrame()
     merged_df = pl.concat(dfs) if len(dfs) > 1 else dfs[0]
+    # api data wins on duplicates
     return merged_df.unique(subset=['candle_begin_time'], keep='last').sort('candle_begin_time')
 
 
-def gen_kline(trade_type: TradeType, time_interval: str, symbol: str, results_dir: Path, split_gaps: bool, min_days: int, min_price_chg: float, with_vwap: bool, with_funding_rates: bool):
-    '''Merge AWS+API klines for one symbol, optionally attach funding/spot_exist, split by gaps, fill and write'''
+def gen_kline(trade_type: TradeType, time_interval: str, symbol: str, results_dir: Path, split_gaps: bool, min_days: int, min_price_chg: float):
+    '''Read AWS klines for one symbol, always add VWAP. Futures also get funding and spot_exist. Then split by gaps, fill and write.'''
     # ================================================
     # 1. 合并 K 线
     # ================================================
@@ -147,13 +138,12 @@ def gen_kline(trade_type: TradeType, time_interval: str, symbol: str, results_di
     if df.is_empty():
         return symbol
 
-    if with_vwap:
-        df = df.with_columns((pl.col('quote_volume') / pl.col('volume')).alias(f'avg_price_{time_interval}'))
+    df = df.with_columns((pl.col('quote_volume') / pl.col('volume')).alias(f'avg_price_{time_interval}'))
 
     # ================================================
     # 2. 附加 funding_rate + spot_exist (仅合约)
     # ================================================
-    if trade_type in (TradeType.um_futures, TradeType.cm_futures) and with_funding_rates:
+    if trade_type in (TradeType.um_futures, TradeType.cm_futures):
         # 2.1. 合并 funding_rate
         df_funding = merge_funding_rates(trade_type, symbol)
         if not df_funding.is_empty():
@@ -197,7 +187,7 @@ def gen_kline(trade_type: TradeType, time_interval: str, symbol: str, results_di
     return symbol
 
 
-def gen_kline_type(trade_type: TradeType, time_interval: str, split_gaps: bool, min_days: int, min_price_chg: float, with_vwap: bool, with_funding_rates: bool):
+def gen_kline_type(trade_type: TradeType, time_interval: str, split_gaps: bool, min_days: int, min_price_chg: float):
     logger.info(f'BHDS Merge klines for {trade_type.value} {time_interval}')
 
     results_dir = BINANCE_DATA_DIR / 'results_data' / trade_type.value / time_interval
@@ -216,8 +206,6 @@ def gen_kline_type(trade_type: TradeType, time_interval: str, split_gaps: bool, 
         split_gaps=split_gaps,
         min_days=min_days,
         min_price_chg=min_price_chg,
-        with_vwap=with_vwap,
-        with_funding_rates=with_funding_rates,
     )
 
     with ProcessPoolExecutor(max_workers=N_JOBS, mp_context=mp.get_context('spawn'), initializer=mp_env_init) as exe:

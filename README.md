@@ -142,7 +142,7 @@ The following scripts should be run in sequence for a complete data pipeline:
 
 2. `aws_parse.sh`: Parses the downloaded raw data and stores in parquet format
 
-3. `api_download.sh`: Downloads missing 1-minute klines and recent funding rates data from Binance API
+3. `api_download.sh`: Fills the current month of funding rates from the Binance API. AWS funding files are monthly.
 
 4. `gen_kline.sh`: Generates enhanced 1-minute klines by merging AWS and API data and joins the funding rates
 
